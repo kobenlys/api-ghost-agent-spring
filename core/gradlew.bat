@@ -87,3 +87,4 @@ exit /b 1
 if "%OS%"=="Windows_NT" endlocal
 
 :omega
+>>>>>>> 96d39c5 (init: initalize project)
