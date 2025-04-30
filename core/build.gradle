@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'org.apighost-core'
@@ -9,7 +10,20 @@ repositories {
     mavenCentral()
 }
 
+jar{
+    enabled=true
+    archiveClassifier = ''
+    finalizedBy shadowJar
+}
+
+shadowJar {
+    archiveBaseName.set('apighost-core')
+    archiveVersion.set('0.0.1')
+    mergeServiceFiles()
+}
+
 dependencies {
+
     // ClassGraph
     implementation "io.github.classgraph:classgraph:4.8.112"
 
