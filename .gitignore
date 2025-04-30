@@ -28,5 +28,8 @@
 **/.gradle/
 **/out
 
+# github
+.github
+
 hs_err_pid*
 replay_pid*
