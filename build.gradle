@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'com.apighost'
@@ -15,8 +16,20 @@ repositories {
 }
 
 dependencies {
-
+    implementation project(':core')
+    implementation project(':web')
 }
 
-jar {
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force 'org.apache.commons:commons-text:1.9'
+        }
+    }
+}
+
+shadowJar {
+    archiveBaseName.set("api-ghost-agent-spring")
+    archiveClassifier.set("")
+    archiveVersion.set("0.0.1-BETA")
 }
