@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ApiGhostProperties {
+
     private String basePackage;
     private String openAiKey;
 

@@ -14,10 +14,10 @@ dependencies {
     implementation project(':core')
 
     // Spring
-    implementation 'org.springframework:spring-context:6.0.23'
-    implementation "org.springframework:spring-beans:6.0.23"
-    implementation "org.springframework:spring-aop:6.0.23"
-    implementation "org.springframework:spring-webmvc:6.0.23"
+    implementation 'org.springframework:spring-context:6.2.3'
+    implementation "org.springframework:spring-beans:6.2.3"
+    implementation "org.springframework:spring-aop:6.2.3"
+    implementation "org.springframework:spring-webmvc:6.2.3"
 
     // SLF4J
     implementation "org.slf4j:slf4j-api:2.0.6"
