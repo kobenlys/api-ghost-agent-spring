@@ -1,0 +1,108 @@
+package com.apighost.agent.executor;
+
+import com.apighost.model.scenario.step.HTTPMethod;
+import org.springframework.http.HttpStatusCode;
+
+import java.util.Date;
+import java.util.Map;
+
+public class ResponseResult {
+
+    private Map<String, Object> body;
+    private HttpStatusCode httpStatus;
+    private HTTPMethod httpMethod;
+    private Map<String, String> header;
+    private Date startTime;
+    private Date endTime;
+    private int durationMs;
+
+    // 생성자 private
+    private ResponseResult(Builder builder) {
+        this.body = builder.body;
+        this.httpStatus = builder.httpStatus;
+        this.httpMethod = builder.httpMethod;
+        this.header = builder.header;
+        this.startTime = builder.startTime;
+        this.endTime = builder.endTime;
+        this.durationMs = builder.durationMs;
+    }
+
+    // 정적 내부 클래스 - Builder
+    public static class Builder {
+
+        private Map<String, Object> body;
+        private HttpStatusCode httpStatus;
+        private HTTPMethod httpMethod;
+        private Map<String, String> header;
+        private Date startTime;
+        private Date endTime;
+        private int durationMs;
+
+        public Builder body(Map<String, Object> body) {
+            this.body = body;
+            return this;
+        }
+
+        public Builder httpStatus(HttpStatusCode httpStatus) {
+            this.httpStatus = httpStatus;
+            return this;
+        }
+
+        public Builder httpMethod(HTTPMethod httpMethod) {
+            this.httpMethod = httpMethod;
+            return this;
+        }
+
+        public Builder header(Map<String, String> header) {
+            this.header = header;
+            return this;
+        }
+
+        public Builder startTime(Date startTime) {
+            this.startTime = startTime;
+            return this;
+        }
+
+        public Builder endTime(Date endTime) {
+            this.endTime = endTime;
+            return this;
+        }
+
+        public Builder durationMs(int durationMs) {
+            this.durationMs = durationMs;
+            return this;
+        }
+
+        public ResponseResult build() {
+            return new ResponseResult(this);
+        }
+    }
+
+    public Map<String, Object> getBody() {
+        return body;
+    }
+
+    public HttpStatusCode getHttpStatus() {
+        return httpStatus;
+    }
+
+    public HTTPMethod getHttpMethod() {
+        return httpMethod;
+    }
+
+    public Map<String, String> getHeader() {
+        return header;
+    }
+
+    public Date getStartTime() {
+        return startTime;
+    }
+
+    public Date getEndTime() {
+        return endTime;
+    }
+
+    public int getDurationMs() {
+        return durationMs;
+    }
+}
