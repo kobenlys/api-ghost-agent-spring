@@ -16,7 +16,6 @@ public class ResponseResult {
     private Date endTime;
     private int durationMs;
 
-    // 생성자 private
     private ResponseResult(Builder builder) {
         this.body = builder.body;
         this.httpStatus = builder.httpStatus;
@@ -27,7 +26,6 @@ public class ResponseResult {
         this.durationMs = builder.durationMs;
     }
 
-    // 정적 내부 클래스 - Builder
     public static class Builder {
 
         private Map<String, Object> body;
