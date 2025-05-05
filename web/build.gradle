@@ -12,6 +12,7 @@ repositories {
 dependencies {
 
     implementation project(':core')
+    implementation files('libs/model-1.0-SNAPSHOT.jar')
 
     // Spring
     implementation 'org.springframework:spring-context:6.2.3'
@@ -21,7 +22,7 @@ dependencies {
 
     // SLF4J
     implementation "org.slf4j:slf4j-api:2.0.6"
-    implementation "org.slf4j:slf4j-ext:2.0.6"
+    implementation 'ch.qos.logback:logback-classic:1.5.17'
 
     // Jackson
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0"
