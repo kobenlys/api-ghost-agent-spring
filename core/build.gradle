@@ -24,6 +24,8 @@ shadowJar {
 
 dependencies {
 
+    implementation files('libs/model-1.0-SNAPSHOT.jar')
+
     // ClassGraph
     implementation "io.github.classgraph:classgraph:4.8.112"
 

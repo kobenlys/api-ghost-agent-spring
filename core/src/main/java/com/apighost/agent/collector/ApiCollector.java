@@ -2,6 +2,7 @@ package com.apighost.agent.collector;
 
 import com.apighost.agent.model.DtoSchema;
 import com.apighost.agent.model.FieldMeta;
+import com.apighost.model.scenario.step.HTTPMethod;
 import io.github.classgraph.MethodParameterInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -85,7 +86,7 @@ public class ApiCollector {
 
         AnnotationInfoList methodAnnotations = methodInfo.getAnnotationInfo();
 
-        String httpMethod = "";
+        HTTPMethod httpMethod = null;
         String path = "";
         List<String> produces = Collections.emptyList();
         List<String> consumes = Collections.emptyList();
@@ -95,7 +96,7 @@ public class ApiCollector {
         if (methodAnnotations.containsName("org.springframework.web.bind.annotation.GetMapping")) {
             annotationInfo = methodAnnotations.get(
                 "org.springframework.web.bind.annotation.GetMapping");
-            httpMethod = "GET";
+            httpMethod = HTTPMethod.GET;
             path = extractPath(annotationInfo);
             produces = resolveConsumesOrProduces(classProduces, annotationInfo, "produces");
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
@@ -103,7 +104,7 @@ public class ApiCollector {
             "org.springframework.web.bind.annotation.PostMapping")) {
             annotationInfo = methodAnnotations.get(
                 "org.springframework.web.bind.annotation.PostMapping");
-            httpMethod = "POST";
+            httpMethod = HTTPMethod.POST;
             path = extractPath(annotationInfo);
             produces = resolveConsumesOrProduces(classProduces, annotationInfo, "produces");
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
@@ -111,7 +112,7 @@ public class ApiCollector {
             "org.springframework.web.bind.annotation.PutMapping")) {
             annotationInfo = methodAnnotations.get(
                 "org.springframework.web.bind.annotation.PutMapping");
-            httpMethod = "PUT";
+            httpMethod = HTTPMethod.PUT;
             path = extractPath(annotationInfo);
             produces = resolveConsumesOrProduces(classProduces, annotationInfo, "produces");
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
@@ -119,7 +120,7 @@ public class ApiCollector {
             "org.springframework.web.bind.annotation.PatchMapping")) {
             annotationInfo = methodAnnotations.get(
                 "org.springframework.web.bind.annotation.PatchMapping");
-            httpMethod = "PATCH";
+            httpMethod = HTTPMethod.PATCH;
             path = extractPath(annotationInfo);
             produces = resolveConsumesOrProduces(classProduces, annotationInfo, "produces");
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
@@ -127,7 +128,7 @@ public class ApiCollector {
             "org.springframework.web.bind.annotation.DeleteMapping")) {
             annotationInfo = methodAnnotations.get(
                 "org.springframework.web.bind.annotation.DeleteMapping");
-            httpMethod = "DELETE";
+            httpMethod = HTTPMethod.DELETE;
             path = extractPath(annotationInfo);
             produces = resolveConsumesOrProduces(classProduces, annotationInfo, "produces");
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
@@ -141,7 +142,7 @@ public class ApiCollector {
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
         }
 
-        if (httpMethod.isEmpty() || path == null) {
+        if (httpMethod == null || path.isEmpty()) {
             return null;
         }
 
@@ -170,37 +171,39 @@ public class ApiCollector {
         return "";
     }
 
-    private String extractHttpMethod(AnnotationInfo annotationInfo) {
+    private HTTPMethod extractHttpMethod(AnnotationInfo annotationInfo) {
         if (annotationInfo == null) {
-            return "GET";
+            return HTTPMethod.GET;
         }
 
         Object methodAttr = annotationInfo.getParameterValues().getValue("method");
         if (methodAttr == null) {
-            return "GET";
+            return HTTPMethod.GET;
         }
         if (methodAttr.getClass().isArray()) {
             Object[] methods = (Object[]) methodAttr;
             if (methods.length > 0) {
                 String methodStr = methods[0].toString();
-                if (methodStr.contains(".")) {
-                    String[] parts = methodStr.split("\\.");
-                    return parts[parts.length - 1];
-                }
-                return methodStr;
+                return parseHttpMethodFromString(methodStr);
             }
         } else {
             String methodStr = methodAttr.toString();
-            if (methodStr.contains(".")) {
-                String[] parts = methodStr.split("\\.");
-                return parts[parts.length - 1];
-            }
-            return methodStr;
+            return parseHttpMethodFromString(methodStr);
         }
 
-        return "GET";
+        return HTTPMethod.GET;
     }
+    private HTTPMethod parseHttpMethodFromString(String methodStr) {
+        if (methodStr.contains(".")) {
+            methodStr = methodStr.substring(methodStr.lastIndexOf('.') + 1);
+        }
 
+        try {
+            return HTTPMethod.valueOf(methodStr);
+        } catch (IllegalArgumentException e) {
+            return HTTPMethod.GET;
+        }
+    }
     private String formatPath(String path) {
         if (path == null || path.isEmpty()) {
             return "";
@@ -223,10 +226,7 @@ public class ApiCollector {
         if (value instanceof String) {
             return Collections.singletonList((String) value);
         } else if (value instanceof String[]) {
-            String[] array = (String[]) value;
-            List<String> result = new ArrayList<>();
-            Collections.addAll(result, array);
-            return result;
+            return Arrays.asList((String[]) value);
         }
 
         return Collections.emptyList();
@@ -238,9 +238,8 @@ public class ApiCollector {
         return !methodLevel.isEmpty() ? methodLevel : classLevel;
     }
 
-    private DtoSchema extractDtoSchema(MethodInfo methodInfo, String httpMethod) {
-        if (!httpMethod.equals("POST") && !httpMethod.equals("PUT") && !httpMethod.equals(
-            "PATCH")) {
+    private DtoSchema extractDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
+        if (httpMethod != HTTPMethod.POST && httpMethod != HTTPMethod.PUT && httpMethod != HTTPMethod.PATCH) {
             return null;
         }
 
@@ -356,18 +355,16 @@ public class ApiCollector {
             return false;
         }
 
-        int getterCount = 0, setterCount = 0;
+        int getterCount = 0;
         for (Method method : clazz.getDeclaredMethods()) {
             if (Modifier.isPublic(method.getModifiers())) {
                 String name = method.getName();
                 if ((name.startsWith("get") || (name.startsWith("is") && method.getReturnType() == boolean.class))
                     && method.getParameterCount() == 0) {
                     getterCount++;
-                } else if (name.startsWith("set") && method.getParameterCount() == 1) {
-                    setterCount++;
                 }
             }
         }
-        return getterCount > 0 && setterCount > 0;
+        return getterCount > 0;
     }
 }
