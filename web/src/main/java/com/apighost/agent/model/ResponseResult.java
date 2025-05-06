@@ -1,4 +1,4 @@
-package com.apighost.agent.executor;
+package com.apighost.agent.model;
 
 import com.apighost.model.scenario.step.HTTPMethod;
 import org.springframework.http.HttpStatusCode;
