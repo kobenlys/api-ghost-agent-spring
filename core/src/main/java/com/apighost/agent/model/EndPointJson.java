@@ -1,18 +1,21 @@
 package com.apighost.agent.model;
 
+import com.apighost.model.scenario.step.HTTPMethod;
+
 public class EndPointJson {
-    private String HTTPMethod;
+
+    private HTTPMethod httpMethod;
     private String path;
     private String jsonBody;
 
-    public EndPointJson(String HTTPMethod, String path, String jsonBody) {
-        this.HTTPMethod = HTTPMethod;
+    public EndPointJson(HTTPMethod httpMethod, String path, String jsonBody) {
+        this.httpMethod = httpMethod;
         this.path = path;
         this.jsonBody = jsonBody;
     }
 
-    public String getHTTPMethod() {
-        return HTTPMethod;
+    public HTTPMethod getHttpMethod() {
+        return httpMethod;
     }
 
     public String getPath() {
