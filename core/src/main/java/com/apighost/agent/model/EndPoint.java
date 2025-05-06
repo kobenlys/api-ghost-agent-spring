@@ -4,58 +4,39 @@ import java.util.List;
 
 public class EndPoint {
 
-	private String httpMethod;
-	private String path;
-	private List<String> produces;
-	private List<String> consumes;
-	private DtoSchema requestSchema;
+    private final String httpMethod;
+    private final String path;
+    private final List<String> produces;
+    private final List<String> consumes;
+    private final DtoSchema requestSchema;
 
-	public EndPoint(String httpMethod, String path, List<String> produces, List<String> consumes,
-		DtoSchema requestSchema) {
-		this.httpMethod = httpMethod;
-		this.path = path;
-		this.produces = produces;
-		this.consumes = consumes;
-		this.requestSchema = requestSchema;
-	}
+    public EndPoint(String httpMethod, String path, List<String> produces, List<String> consumes,
+        DtoSchema requestSchema) {
+        this.httpMethod = httpMethod;
+        this.path = path;
+        this.produces = produces;
+        this.consumes = consumes;
+        this.requestSchema = requestSchema;
+    }
 
-	public String getHttpMethod() {
-		return httpMethod;
-	}
+    public String getHttpMethod() {
+        return httpMethod;
+    }
 
-	public void setHttpMethod(String httpMethod) {
-		this.httpMethod = httpMethod;
-	}
+    public String getPath() {
+        return path;
+    }
 
-	public String getPath() {
-		return path;
-	}
+    public List<String> getProduces() {
+        return produces;
+    }
 
-	public void setPath(String path) {
-		this.path = path;
-	}
+    public List<String> getConsumes() {
+        return consumes;
+    }
 
-	public List<String> getProduces() {
-		return produces;
-	}
+    public DtoSchema getRequestSchema() {
+        return requestSchema;
+    }
 
-	public void setProduces(List<String> produces) {
-		this.produces = produces;
-	}
-
-	public List<String> getConsumes() {
-		return consumes;
-	}
-
-	public void setConsumes(List<String> consumes) {
-		this.consumes = consumes;
-	}
-
-	public DtoSchema getRequestSchema() {
-		return requestSchema;
-	}
-
-	public void setRequestSchema(DtoSchema requestSchema) {
-		this.requestSchema = requestSchema;
-	}
 }
