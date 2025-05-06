@@ -1,6 +1,7 @@
 package com.apighost.agent.executor;
 
 import com.apighost.agent.loader.ScenarioFileLoader;
+import com.apighost.agent.model.ResponseResult;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.model.scenario.request.Request;
@@ -96,7 +97,7 @@ public class ScenarioTestExecutor {
                     .startTime(responseResult.getStartTime().toString())
                     .endTime(responseResult.getEndTime().toString())
                     .durationMs(responseResult.getDurationMs())
-                    .requestSuccess(matchedThen != null)
+                    .isRequestSuccess(matchedThen != null)
                     .route(null)
                     .build();
 
