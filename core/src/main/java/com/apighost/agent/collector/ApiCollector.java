@@ -142,7 +142,7 @@ public class ApiCollector {
             consumes = resolveConsumesOrProduces(classConsumes, annotationInfo, "consumes");
         }
 
-        if (httpMethod == null || path == null) {
+        if (httpMethod == null || path.isEmpty()) {
             return null;
         }
 
@@ -226,10 +226,7 @@ public class ApiCollector {
         if (value instanceof String) {
             return Collections.singletonList((String) value);
         } else if (value instanceof String[]) {
-            String[] array = (String[]) value;
-            List<String> result = new ArrayList<>();
-            Collections.addAll(result, array);
-            return result;
+            return Arrays.asList((String[]) value);
         }
 
         return Collections.emptyList();
@@ -358,18 +355,16 @@ public class ApiCollector {
             return false;
         }
 
-        int getterCount = 0, setterCount = 0;
+        int getterCount = 0;
         for (Method method : clazz.getDeclaredMethods()) {
             if (Modifier.isPublic(method.getModifiers())) {
                 String name = method.getName();
                 if ((name.startsWith("get") || (name.startsWith("is") && method.getReturnType() == boolean.class))
                     && method.getParameterCount() == 0) {
                     getterCount++;
-                } else if (name.startsWith("set") && method.getParameterCount() == 1) {
-                    setterCount++;
                 }
             }
         }
-        return getterCount > 0 && setterCount > 0;
+        return getterCount > 0;
     }
 }
