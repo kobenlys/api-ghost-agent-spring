@@ -60,6 +60,14 @@ public class ScenarioTestExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(ScenarioTestExecutor.class);
 
+    /**
+     * Constructs a new {@code ScenarioTestExecutor} with required dependencies.
+     *
+     * @param restTemplate       the HTTP client used to send requests during scenario execution
+     * @param objectMapper       the JSON object mapper used for serializing and deserializing data
+     * @param scenarioFileLoader the component responsible for loading scenario definitions
+     * @param apiGhostSetting    the configuration settings for API Ghost execution environment
+     */
     public ScenarioTestExecutor(RestTemplate restTemplate, ObjectMapper objectMapper,
         ScenarioFileLoader scenarioFileLoader, ApiGhostSetting apiGhostSetting) {
         this.restTemplate = restTemplate;
@@ -68,6 +76,13 @@ public class ScenarioTestExecutor {
         this.apiGhostSetting = apiGhostSetting;
     }
 
+    /**
+     * Executes a scenario test specified by its name and emits step-by-step results via SSE.
+     *
+     * @param scenarioName the name of the scenario file (without ".yaml")
+     * @param emitter      the {@link SseEmitter} used to send results in real time
+     * @throws IOException if the scenario file cannot be read or parsed
+     */
     public void testExecutor(String scenarioName, SseEmitter emitter) throws IOException {
         List<ResultStep> resultSteps = new ArrayList<>();
         Scenario scenarioInfo = null;
@@ -140,6 +155,14 @@ public class ScenarioTestExecutor {
         emitter.send(SseEmitter.event().name("complete").data(scenarioResult));
     }
 
+    /**
+     * Matches the actual response against the list of defined {@link Route} conditions, returning
+     * the corresponding {@link Then} directive if expectations are met.
+     *
+     * @param responseResult the actual response received from executing the step
+     * @param routeList      the list of conditional routing definitions in the scenario
+     * @return the matched {@link Then} step to execute next, or {@code null} if no match found
+     */
     private Then matchsExpected(ResponseResult responseResult, List<Route> routeList) {
         Map<String, Object> responseBody = responseResult.getBody();
 
@@ -153,7 +176,6 @@ public class ScenarioTestExecutor {
             Map<String, Object> expectedBody = route.getExpected().getValue();
 
             if (responseResult.getHttpStatus().value() == status) {
-
                 boolean allMatch = true;
 
                 for (Entry<String, Object> entry : expectedBody.entrySet()) {
@@ -166,7 +188,6 @@ public class ScenarioTestExecutor {
                     }
 
                     Object actualValue = responseBody.get(key);
-
                     if (!expectedValue.equals(actualValue)) {
                         allMatch = false;
                         break;
@@ -178,10 +199,15 @@ public class ScenarioTestExecutor {
                 }
             }
         }
-
         return null;
     }
 
+    /**
+     * Executes an HTTP request defined in the scenario {@link Request} and captures the response.
+     *
+     * @param scenarioRequest the HTTP request definition in the scenario
+     * @return a {@link ResponseResult} containing the status, headers, body, and duration
+     */
     private ResponseResult httpProtocolExecutor(Request scenarioRequest) {
 
         try {
@@ -233,6 +259,14 @@ public class ScenarioTestExecutor {
         }
     }
 
+    /**
+     * Parses a raw HTTP response body string into a {@code Map<String, Object>} representation.
+     * Supports JSON object, string, boolean, number, and handles plain text gracefully.
+     *
+     * @param responseBodyStr the raw HTTP response body as a string
+     * @return a parsed body as a map
+     * @throws JsonProcessingException if the input is a malformed JSON string
+     */
     private Map<String, Object> getParseBody(String responseBodyStr)
         throws JsonProcessingException {
         Map<String, Object> resBody;
@@ -263,11 +297,17 @@ public class ScenarioTestExecutor {
         return resBody;
     }
 
+    /**
+     * Checks whether a given string can be interpreted as a valid JSON content.
+     *
+     * @param targetString the string to check
+     * @return {@code true} if the string is likely JSON, {@code false} otherwise
+     */
     private boolean isJson(String targetString) {
         targetString = targetString.trim();
 
-        return (targetString.startsWith("{") && targetString.endsWith("}")) ||
-            (targetString.startsWith("[") && targetString.endsWith("]")) ||
-            targetString.equals("false") || targetString.equals("null");
+        return (targetString.startsWith("{") && targetString.endsWith(
+            "}")) || (targetString.startsWith("[") && targetString.endsWith(
+            "]")) || targetString.equals("false") || targetString.equals("null");
     }
 }
