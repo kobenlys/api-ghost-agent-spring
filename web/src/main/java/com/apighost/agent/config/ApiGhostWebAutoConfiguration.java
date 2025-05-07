@@ -96,9 +96,8 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public ScenarioTestExecutor scenarioTestExecutor(RestTemplate restTemplate,
-        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader, Environment env) {
-        String filePath = env.getProperty("apighost.base.filepath");
-        return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader, filePath);
+        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader, ApiGhostSetting apiGhostSetting) {
+        return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader, apiGhostSetting);
     }
 
 }
