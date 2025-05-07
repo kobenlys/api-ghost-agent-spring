@@ -17,12 +17,12 @@ public class FileLoader {
     public List<String> getScenarioNames() {
         List<String> scenarioNames = new ArrayList<>();
 
-        File dir = new File(apiGhostSetting.getScenarioPath());
-        if (!dir.isDirectory()) {
+        File scenarioDirectory = new File(apiGhostSetting.getScenarioPath());
+        if (!scenarioDirectory.isDirectory()) {
             throw new IllegalStateException("Scenario directory not found");
         }
 
-        File[] files = dir.listFiles();
+        File[] files = scenarioDirectory.listFiles();
         if (files == null) {
             return scenarioNames;
         }
@@ -40,12 +40,12 @@ public class FileLoader {
     public List<File> getScenarioResults() {
         List<File> scenarioResultFiles = new ArrayList<>();
 
-        File dir = new File(apiGhostSetting.getResultPath());
-        if (!dir.isDirectory()) {
+        File resultDirectory = new File(apiGhostSetting.getResultPath());
+        if (!resultDirectory.isDirectory()) {
             throw new IllegalStateException("Result directory not found");
         }
 
-        File[] files = dir.listFiles();
+        File[] files = resultDirectory.listFiles();
         if (files == null) {
             return scenarioResultFiles;
         }
