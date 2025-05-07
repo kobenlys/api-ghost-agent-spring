@@ -1,11 +1,15 @@
 package com.apighost.agent.engine;
 
+import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.loader.FileLoader;
 import com.apighost.agent.model.ScenarioResultBrief;
 import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.model.ScenarioListResponse;
+import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
+import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
+import com.apighost.parser.scenario.reader.YamlScenarioReader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
@@ -29,7 +33,8 @@ public class FileLoaderEngine {
 
     private final FileLoader fileLoader;
     private final ObjectMapper objectMapper;
-    private static final Logger log = LoggerFactory.getLogger(ScenarioTestExecutor.class);
+    private final ApiGhostSetting apiGhostSetting;
+    private static final Logger log = LoggerFactory.getLogger(FileLoaderEngine.class);
 
     /**
      * Constructs a new {@code FileLoaderEngine} with the specified dependencies.
@@ -37,9 +42,11 @@ public class FileLoaderEngine {
      * @param fileLoader   the file loader for accessing scenario and result files
      * @param objectMapper the object mapper used to deserialize result files
      */
-    public FileLoaderEngine(FileLoader fileLoader, ObjectMapper objectMapper) {
+    public FileLoaderEngine(FileLoader fileLoader, ObjectMapper objectMapper,
+        ApiGhostSetting apiGhostSetting) {
         this.fileLoader = fileLoader;
         this.objectMapper = objectMapper;
+        this.apiGhostSetting = apiGhostSetting;
     }
 
     public ScenarioListResponse getScenarioNames() {
@@ -76,5 +83,67 @@ public class FileLoaderEngine {
         }
 
         return new ScenarioResultListResponse(resultBriefs);
+    }
+
+    /**
+     * Retrieves a {@link Scenario} object by reading the YAML scenario file with the given name.
+     * <p>
+     * This method validates the input name, constructs the file path using {@link ApiGhostSetting}
+     * </p>
+     *
+     * @param scenarioName the name of the scenario file to load (e.g., "login.yml")
+     * @return the parsed {@link Scenario} object
+     * @throws IllegalArgumentException if the scenarioName is null, empty, or the file cannot be
+     *                                  read
+     */
+    public Scenario getScenarioInfo(String scenarioName) {
+        YamlScenarioReader yamlScenarioReader = new YamlScenarioReader();
+        if (isEmptyOrNull(scenarioName)) {
+            throw new IllegalArgumentException("scenarioName must not be null or empty");
+        }
+
+        try {
+            return yamlScenarioReader.readScenario(
+                apiGhostSetting.getScenarioPath() + "/" + scenarioName);
+        } catch (IOException e) {
+            log.error("ScenarioFile Not Found: {}", e.getMessage());
+            throw new IllegalArgumentException("ScenarioFile Not Founded : " + scenarioName);
+        }
+    }
+
+    /**
+     * Retrieves a {@link ScenarioResult} object by reading the JSON test result file with the given
+     * name.
+     *
+     * <p>
+     * This method validates the input name, constructs the file path using {@link ApiGhostSetting}
+     * </p>
+     *
+     * @param resultName the name of the result file to load (e.g., "login-result.json")
+     * @return the parsed {@link ScenarioResult} object
+     * @throws IllegalArgumentException if the resultName is null, empty, or the file cannot be
+     *                                  read
+     */
+    public ScenarioResult getTestResultInfo(String resultName) {
+        JsonScenarioResultReader jsonScenarioResultReader = new JsonScenarioResultReader();
+        if (isEmptyOrNull(resultName)) {
+            throw new IllegalArgumentException("resultName must not be null or empty");
+        }
+
+        if (!resultName.endsWith(apiGhostSetting.getFormatJson())) {
+            resultName += apiGhostSetting.getFormatJson();
+        }
+
+        try {
+            return jsonScenarioResultReader.readScenarioResult(
+                apiGhostSetting.getResultPath() + "/" + resultName);
+        } catch (IOException e) {
+            log.error("ResultFile Not Found: {}", e.getMessage());
+            throw new IllegalArgumentException("ResultFile Not Founded : " + resultName);
+        }
+    }
+
+    private boolean isEmptyOrNull(String targetString) {
+        return targetString == null || targetString.isEmpty();
     }
 }

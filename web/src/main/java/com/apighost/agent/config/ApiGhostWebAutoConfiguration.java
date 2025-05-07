@@ -90,14 +90,16 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader,
-        ObjectMapper objectMapper) {
-        return new FileLoaderEngine(fileLoader, objectMapper);
+        ObjectMapper objectMapper, ApiGhostSetting apiGhostSetting) {
+        return new FileLoaderEngine(fileLoader, objectMapper, apiGhostSetting);
     }
 
     @Bean
     public ScenarioTestExecutor scenarioTestExecutor(RestTemplate restTemplate,
-        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader, ApiGhostSetting apiGhostSetting) {
-        return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader, apiGhostSetting);
+        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader,
+        ApiGhostSetting apiGhostSetting) {
+        return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader,
+            apiGhostSetting);
     }
 
 }
