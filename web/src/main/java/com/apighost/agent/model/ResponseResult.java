@@ -7,8 +7,8 @@ import java.util.Date;
 import java.util.Map;
 
 /**
- * Manages the response information of scenario tests (API requests)
- * by encapsulating it into objects.
+ * Manages the response information of scenario tests (API requests) by encapsulating it into
+ * objects.
  *
  * @author kobenlys
  * @version BETA-0.0.1
