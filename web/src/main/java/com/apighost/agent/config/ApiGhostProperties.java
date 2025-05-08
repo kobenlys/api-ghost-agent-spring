@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class ApiGhostProperties {
 
     private String basePackage;
+    private String baseUrl;
     private String openAiKey;
 
     public String getBasePackage() {
@@ -24,6 +25,14 @@ public class ApiGhostProperties {
 
     public void setBasePackage(String basePackage) {
         this.basePackage = basePackage;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getOpenAiKey() {

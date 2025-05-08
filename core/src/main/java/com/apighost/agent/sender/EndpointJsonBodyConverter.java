@@ -45,7 +45,7 @@ public class EndpointJsonBodyConverter {
 
         try {
             ObjectNode root = objectMapper.createObjectNode();
-            List<FieldMeta> fields = endPoint.getRequestSchema().getFields();
+            List<FieldMeta> fields = endPoint.getRequestSchema();
 
             if (fields != null && !fields.isEmpty()) {
                 buildJsonFromSchema(root, fields);
