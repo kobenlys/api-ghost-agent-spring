@@ -125,6 +125,15 @@ public class EngineController {
         return ResponseEntity.ok(fileLoaderEngine.getTestResultInfo(testResultName));
     }
 
+    /**
+     * Exports the provided scenario to a file using the configured format and path.
+     * <p>
+     * The scenario is saved in either YAML or JSON format depending on the current settings.
+     * </p>
+     *
+     * @param scenario the {@link Scenario} object to be exported
+     * @return a {@link ResponseEntity} containing the export result, including file name and status
+     */
     @PostMapping("/scenario-export")
     public ResponseEntity<ScenarioExportResponse> exportScenarioFile(@RequestBody Scenario scenario){
         return ResponseEntity.ok(fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
