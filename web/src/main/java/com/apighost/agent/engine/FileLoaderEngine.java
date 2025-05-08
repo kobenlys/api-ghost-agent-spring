@@ -1,8 +1,7 @@
 package com.apighost.agent.engine;
 
 import com.apighost.agent.config.ApiGhostSetting;
-import com.apighost.agent.executor.ScenarioTestExecutor;
-import com.apighost.agent.loader.FileLoader;
+import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.model.ScenarioResultBrief;
 import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.model.ScenarioListResponse;

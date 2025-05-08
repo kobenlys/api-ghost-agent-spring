@@ -1,12 +1,17 @@
 package com.apighost.agent.controller;
 
+import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.executor.ScenarioTestExecutor;
+import com.apighost.agent.file.FileExporter;
+import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.agent.model.ScenarioListResponse;
 import com.apighost.agent.model.ScenarioResultListResponse;
-import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
+import com.apighost.model.scenario.Scenario;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,10 +34,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/apighost")
 public class EngineController {
-
     private final ScenarioTestExecutor scenarioTestExecutor;
     private final FileLoaderEngine fileLoaderEngine;
-
+    private final FileExporter fileExporter;
+    private final ApiGhostSetting apiGhostSetting;
     /**
      * Constructs a new {@code EngineController} with the required executor and engine.
      *
@@ -40,9 +45,12 @@ public class EngineController {
      * @param fileLoaderEngine     the engine responsible for loading scenario files and results
      */
     public EngineController(ScenarioTestExecutor scenarioTestExecutor,
-        FileLoaderEngine fileLoaderEngine) {
+        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
+        ApiGhostSetting apiGhostSetting) {
         this.scenarioTestExecutor = scenarioTestExecutor;
         this.fileLoaderEngine = fileLoaderEngine;
+        this.fileExporter = fileExporter;
+        this.apiGhostSetting = apiGhostSetting;
     }
 
     /**
@@ -115,5 +123,11 @@ public class EngineController {
     @GetMapping("/result-info")
     public ResponseEntity<?> getResultInfo(@RequestParam("testResultName") String testResultName) {
         return ResponseEntity.ok(fileLoaderEngine.getTestResultInfo(testResultName));
+    }
+
+    @PostMapping("/scenario-export")
+    public ResponseEntity<ScenarioExportResponse> exportScenarioFile(@RequestBody Scenario scenario){
+        return ResponseEntity.ok(fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
+            apiGhostSetting.getScenarioPath()));
     }
 }

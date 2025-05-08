@@ -1,5 +1,6 @@
-package com.apighost.agent.loader;
+package com.apighost.agent.file;
 
+import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +54,14 @@ public class FileExporter {
         }
     }
 
+    public ScenarioExportResponse safeExportFile(Object fileObject, String fileType, String exportPath) {
+        try {
+            exportFile(fileObject, fileType, exportPath);
+            return new ScenarioExportResponse(true);
+        }  catch (Exception e) {
+            return new ScenarioExportResponse(false);
+        }
+    }
 
     private boolean isEmptyOrNull(String targetString) {
         return targetString == null || targetString.isEmpty();

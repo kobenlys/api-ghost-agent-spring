@@ -6,9 +6,9 @@ import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.executor.ScenarioTestExecutor;
-import com.apighost.agent.loader.FileExporter;
-import com.apighost.agent.loader.FileLoader;
-import com.apighost.agent.loader.ScenarioFileLoader;
+import com.apighost.agent.file.FileExporter;
+import com.apighost.agent.file.FileLoader;
+import com.apighost.agent.file.ScenarioFileLoader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
@@ -55,8 +55,8 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public EngineController engineController(ScenarioTestExecutor scenarioTestExecutor,
-        FileLoaderEngine fileLoaderEngine) {
-        return new EngineController(scenarioTestExecutor, fileLoaderEngine);
+        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter, ApiGhostSetting apiGhostSetting ) {
+        return new EngineController(scenarioTestExecutor, fileLoaderEngine, fileExporter, apiGhostSetting);
     }
 
     @Bean
