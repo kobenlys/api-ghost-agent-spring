@@ -76,8 +76,8 @@ public class FileLoaderEngine {
                 continue;
             }
 
-            ScenarioResultBrief brief = new ScenarioResultBrief(scenarioResult.getName(),
-                scenarioResult.isScenarioSuccess(), scenarioResult.getExecutedAt());
+            ScenarioResultBrief brief = new ScenarioResultBrief(file.getName(),
+                scenarioResult.getIsScenarioSuccess(), scenarioResult.getExecutedAt());
 
             resultBriefs.add(brief);
         }

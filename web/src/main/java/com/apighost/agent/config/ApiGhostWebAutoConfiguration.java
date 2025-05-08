@@ -6,10 +6,11 @@ import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.executor.ScenarioTestExecutor;
+import com.apighost.agent.loader.FileExporter;
 import com.apighost.agent.loader.FileLoader;
 import com.apighost.agent.loader.ScenarioFileLoader;
-import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,15 +66,15 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public RestTemplate restTemplate(ApplicationContext applicationContext) {
-        Map<String, RestTemplate> restTemplateBeans = applicationContext.getBeansOfType(
-            RestTemplate.class);
+        Map<String, RestTemplate> restTemplateBeans =
+            applicationContext.getBeansOfType(RestTemplate.class);
         if (restTemplateBeans.isEmpty()) {
             return new RestTemplate();
         }
         return restTemplateBeans.values().iterator().next();
     }
 
-    @Bean
+    @Bean(name = "lib-objectmapper")
     public ObjectMapper objectMapper() {
         return new ObjectMapper();
     }
@@ -89,17 +90,22 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader,
-        ObjectMapper objectMapper, ApiGhostSetting apiGhostSetting) {
+    public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader, ObjectMapper objectMapper,
+        ApiGhostSetting apiGhostSetting) {
         return new FileLoaderEngine(fileLoader, objectMapper, apiGhostSetting);
     }
 
     @Bean
     public ScenarioTestExecutor scenarioTestExecutor(RestTemplate restTemplate,
-        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader,
+        ObjectMapper objectMapper, ScenarioFileLoader scenarioFileLoader, FileExporter fileExporter,
         ApiGhostSetting apiGhostSetting) {
         return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader,
-            apiGhostSetting);
+            fileExporter, apiGhostSetting);
     }
 
+
+    @Bean
+    public FileExporter fileExporter(@Qualifier("lib-objectmapper") ObjectMapper objectMapper) {
+        return new FileExporter(objectMapper);
+    }
 }

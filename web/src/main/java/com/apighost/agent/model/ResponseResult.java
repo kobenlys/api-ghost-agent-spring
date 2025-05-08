@@ -19,8 +19,8 @@ public class ResponseResult {
     private HttpStatusCode httpStatus;
     private HTTPMethod httpMethod;
     private Map<String, String> header;
-    private Date startTime;
-    private Date endTime;
+    private long startTime;
+    private long endTime;
     private int durationMs;
 
     private ResponseResult(Builder builder) {
@@ -39,8 +39,8 @@ public class ResponseResult {
         private HttpStatusCode httpStatus;
         private HTTPMethod httpMethod;
         private Map<String, String> header;
-        private Date startTime;
-        private Date endTime;
+        private long startTime;
+        private long endTime;
         private int durationMs;
 
         public Builder body(Map<String, Object> body) {
@@ -63,12 +63,12 @@ public class ResponseResult {
             return this;
         }
 
-        public Builder startTime(Date startTime) {
+        public Builder startTime(long startTime) {
             this.startTime = startTime;
             return this;
         }
 
-        public Builder endTime(Date endTime) {
+        public Builder endTime(long endTime) {
             this.endTime = endTime;
             return this;
         }
@@ -99,11 +99,11 @@ public class ResponseResult {
         return header;
     }
 
-    public Date getStartTime() {
+    public long getStartTime() {
         return startTime;
     }
 
-    public Date getEndTime() {
+    public long getEndTime() {
         return endTime;
     }
 
