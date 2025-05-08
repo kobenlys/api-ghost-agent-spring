@@ -4,7 +4,6 @@ import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.model.ScenarioListResponse;
 import com.apighost.agent.model.ScenarioResultListResponse;
-import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
