@@ -4,6 +4,7 @@ import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.model.ScenarioListResponse;
 import com.apighost.agent.model.ScenarioResultListResponse;
+import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -90,5 +91,29 @@ public class EngineController {
         ScenarioResultListResponse scenarioResultListResponse =
             fileLoaderEngine.getScenarioResults();
         return ResponseEntity.ok(scenarioResultListResponse);
+    }
+
+    /**
+     * Retrieve detailed information about a specific scenario.
+     *
+     * @param scenarioName the name of the scenario file to retrieve information for
+     * @return a {@link ResponseEntity} containing the scenario information, or an appropriate error
+     * response
+     */
+    @GetMapping("/scenario-info")
+    public ResponseEntity<?> getScenarioInfo(@RequestParam("scenarioName") String scenarioName) {
+        return ResponseEntity.ok(fileLoaderEngine.getScenarioInfo(scenarioName));
+    }
+
+    /**
+     * Retrieve test result details based on a specific result file name.
+     *
+     * @param testResultName the name of the test result file to retrieve
+     * @return a {@link ResponseEntity} containing the test result information, or an appropriate
+     * error response
+     */
+    @GetMapping("/result-info")
+    public ResponseEntity<?> getResultInfo(@RequestParam("testResultName") String testResultName) {
+        return ResponseEntity.ok(fileLoaderEngine.getTestResultInfo(testResultName));
     }
 }
