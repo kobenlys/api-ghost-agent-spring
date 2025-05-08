@@ -7,16 +7,31 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Converts {@link EndPoint} metadata into {@link EndPointJson} with mock JSON request bodies.
+ *
+ * <p>Uses {@link FieldMeta} structure to recursively generate default JSON bodies for testing or preview.</p>
+ *
+ * @author oneweeek
+ * @version BETA-0.0.1
+ */
 public class EndpointJsonBodyConverter {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Converts a list of {@link EndPoint} objects to {@link EndPointJson} format,
+     * embedding mock request JSON bodies generated from schema.
+     *
+     * @param endPoints list of API endpoint metadata
+     * @return list of endpoints with mock JSON bodies
+     */
     public List<EndPointJson> convert(List<EndPoint> endPoints) {
-
         if (endPoints == null) {
             return Collections.emptyList();
         }
@@ -24,18 +39,23 @@ public class EndpointJsonBodyConverter {
         List<EndPointJson> result = new ArrayList<>();
 
         for (EndPoint endPoint : endPoints) {
-
             String jsonBody = createJsonBodyFromEndpoint(endPoint);
             result.add(new EndPointJson(
                 endPoint.getHttpMethod(),
                 endPoint.getPath(),
                 jsonBody
             ));
-
         }
+
         return result;
     }
 
+    /**
+     * Creates a mock JSON body from an endpoint's request schema.
+     *
+     * @param endPoint the endpoint to process
+     * @return generated JSON string or "{}" if invalid
+     */
     private String createJsonBodyFromEndpoint(EndPoint endPoint) {
         String defaultJson = "{}";
 
@@ -58,14 +78,17 @@ public class EndpointJsonBodyConverter {
         return defaultJson;
     }
 
+    /**
+     * Recursively constructs JSON nodes from a field schema.
+     *
+     * @param node   parent JSON node
+     * @param fields list of field metadata
+     */
     private void buildJsonFromSchema(ObjectNode node, List<FieldMeta> fields) {
-        if (fields == null) {
-            return;
-        }
+        if (fields == null) return;
+
         for (FieldMeta field : fields) {
-            if (field == null || field.getName() == null) {
-                continue;
-            }
+            if (field == null || field.getName() == null) continue;
 
             if (hasNestedFields(field)) {
                 processNestedFields(node, field);
@@ -88,6 +111,7 @@ public class EndpointJsonBodyConverter {
             processObjectField(node, field);
         }
     }
+
     private void processListField(ObjectNode node, FieldMeta field) {
         ArrayNode arrayNode = node.putArray(field.getName());
         ObjectNode itemNode = objectMapper.createObjectNode();
