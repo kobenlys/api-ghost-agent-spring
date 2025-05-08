@@ -1,8 +1,10 @@
 package com.apighost.agent.executor;
 
 import com.apighost.agent.config.ApiGhostSetting;
+import com.apighost.agent.loader.FileExporter;
 import com.apighost.agent.loader.ScenarioFileLoader;
 import com.apighost.agent.model.ResponseResult;
+import com.apighost.agent.util.TimeUtils;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.model.scenario.request.Request;
@@ -22,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -56,6 +57,7 @@ public class ScenarioTestExecutor {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final ScenarioFileLoader scenarioFileLoader;
+    private final FileExporter fileExporter;
     private final ApiGhostSetting apiGhostSetting;
 
     private static final Logger log = LoggerFactory.getLogger(ScenarioTestExecutor.class);
@@ -69,10 +71,12 @@ public class ScenarioTestExecutor {
      * @param apiGhostSetting    the configuration settings for API Ghost execution environment
      */
     public ScenarioTestExecutor(RestTemplate restTemplate, ObjectMapper objectMapper,
-        ScenarioFileLoader scenarioFileLoader, ApiGhostSetting apiGhostSetting) {
+        ScenarioFileLoader scenarioFileLoader, FileExporter fileExporter,
+        ApiGhostSetting apiGhostSetting) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.scenarioFileLoader = scenarioFileLoader;
+        this.fileExporter = fileExporter;
         this.apiGhostSetting = apiGhostSetting;
     }
 
@@ -119,8 +123,8 @@ public class ScenarioTestExecutor {
                         .status(responseResult.getHttpStatus().value())
                         .responseHeaders(responseResult.getHeader())
                         .responseBody(objectMapper.writeValueAsString(responseResult.getBody()))
-                        .startTime(responseResult.getStartTime().toString())
-                        .endTime(responseResult.getEndTime().toString())
+                        .startTime(TimeUtils.convertFormat(responseResult.getStartTime()))
+                        .endTime(TimeUtils.convertFormat(responseResult.getEndTime()))
                         .durationMs(responseResult.getDurationMs())
                         .isRequestSuccess(matchedThen != null).route(null).build();
 
@@ -146,12 +150,14 @@ public class ScenarioTestExecutor {
         }
 
         ScenarioResult scenarioResult = new ScenarioResult.Builder().name(scenarioInfo.getName())
-            .description(scenarioInfo.getDescription()).executedAt(String.valueOf(new Date()))
+            .description(scenarioInfo.getDescription()).executedAt(TimeUtils.getNow())
             .totalDurationMs(totalDurationMs)
             .averageDurationMs(stepCount == 0 ? 0 : totalDurationMs / stepCount)
             .filePath(apiGhostSetting.getResultPath()).baseUrl("/localhost:8080")
             .isScenarioSuccess(isTotalSuccess).results(resultSteps).build();
 
+        fileExporter.exportFile(scenarioResult, apiGhostSetting.getFormatJson(),
+            apiGhostSetting.getResultPath());
         emitter.send(SseEmitter.event().name("complete").data(scenarioResult));
     }
 
@@ -250,7 +256,7 @@ public class ScenarioTestExecutor {
 
             return new ResponseResult.Builder().header(resHeader).body(resBody)
                 .httpStatus(httpStatus).httpMethod(scenarioRequest.getMethod())
-                .startTime(new Date(startTime)).endTime(new Date(endTime))
+                .startTime(startTime).endTime(endTime)
                 .durationMs((int) (endTime - startTime)).build();
 
         } catch (JsonProcessingException e) {
