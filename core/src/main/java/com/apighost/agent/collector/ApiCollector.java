@@ -1,7 +1,7 @@
 package com.apighost.agent.collector;
 
-import com.apighost.agent.model.DtoSchema;
 import com.apighost.agent.model.FieldMeta;
+import com.apighost.agent.model.Parameter;
 import com.apighost.model.scenario.step.HTTPMethod;
 import com.apighost.model.scenario.step.ProtocolType;
 import io.github.classgraph.MethodParameterInfo;
@@ -25,22 +25,57 @@ import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.MethodInfo;
 import io.github.classgraph.ScanResult;
+import java.util.Objects;
 import java.util.Set;
-
+/**
+ * Collects API endpoint information from Spring controllers using classpath scanning.
+ *
+ * <p>This collector identifies REST endpoints annotated with Spring Web annotations
+ * and extracts their metadata including paths, HTTP methods, parameters, and DTO schemas.</p>
+ *
+ * <p>Example usage:</p>
+ * <pre>
+ * ApiCollector collector = new ApiCollector("com.example", "https://api.example.com");
+ * collector.scan();
+ * List<EndPoint> endpoints = collector.getEndPointList();
+ * </pre>
+ *
+ * @author oneweeek
+ * @version BETA-0.0.1
+ */
 public class ApiCollector {
 
     private final String basePackage;
+    private final String baseUrl;
     private final List<EndPoint> endPointList = new ArrayList<>();
     private ClassLoader classLoader;
 
-    public ApiCollector(String basePackage) {
+    /**
+     * Constructs an ApiCollector for the specified base package and base URL.
+     *
+     * @param basePackage the root package to scan for controllers
+     * @param baseUrl the base URL for all collected endpoints
+     */
+    public ApiCollector(String basePackage, String baseUrl) {
         this.basePackage = basePackage;
+        this.baseUrl = baseUrl;
     }
 
+    /**
+     * Returns the list of collected endpoints.
+     *
+     * @return immutable list of EndPoint objects
+     */
     public List<EndPoint> getEndPointList() {
         return endPointList;
     }
 
+    /**
+     * Scans the classpath for Spring controllers and collects endpoint information.
+     *
+     * <p>Processes all classes annotated with {@code @RestController} in the configured
+     * base package and its subpackages.</p>
+     */
     public void scan() {
 
         ClassGraph classGraph = new ClassGraph().enableAllInfo();
@@ -83,6 +118,15 @@ public class ApiCollector {
         }
     }
 
+    /**
+     * Converts a controller method to an EndPoint representation.
+     *
+     * @param methodInfo the method metadata to convert
+     * @param classPath the base path from class-level @RequestMapping
+     * @param classProduces the default produces media types from class
+     * @param classConsumes the default consumes media types from class
+     * @return EndPoint instance or null if not a valid endpoint
+     */
     private EndPoint toEndpoint(MethodInfo methodInfo, String classPath, List<String> classProduces,
         List<String> classConsumes) {
 
@@ -149,13 +193,40 @@ public class ApiCollector {
             return null;
         }
         String fullPath = classPath + formatPath(path);
-        DtoSchema requestSchema = extractRequestDtoSchema(methodInfo, httpMethod);
-        DtoSchema responseSchema = extractResponseDtoSchema(methodInfo);
+        List<FieldMeta> responseSchema = extractResponseDtoSchema(methodInfo);
+        List<FieldMeta> requestSchema = extractRequestDtoSchema(methodInfo, httpMethod);
+        List<Parameter> headers = extractParameters(methodInfo,
+            "org.springframework.web.bind.annotation.RequestHeader");
+        List<Parameter> cookies = extractParameters(methodInfo,
+            "org.springframework.web.bind.annotation.CookieValue");
+        List<Parameter> requestParams = extractParameters(methodInfo,
+            "org.springframework.web.bind.annotation.RequestParam");
+        List<Parameter> pathVariables = extractParameters(methodInfo,
+            "org.springframework.web.bind.annotation.PathVariable");
 
-        return new EndPoint(ProtocolType.HTTP, methodName, httpMethod, fullPath, produces, consumes, requestSchema,
-            responseSchema);
+        return new EndPoint.Builder()
+            .protocolType(ProtocolType.HTTP)
+            .baseUrl(baseUrl)
+            .methodName(methodName)
+            .httpMethod(httpMethod)
+            .path(fullPath)
+            .produces(produces)
+            .consumes(consumes)
+            .requestSchema(requestSchema)
+            .responseSchema(responseSchema)
+            .headers(headers)
+            .cookies(cookies)
+            .requestParams(requestParams)
+            .pathVariables(pathVariables)
+            .build();
     }
 
+    /**
+     * Extracts the path value from a Spring mapping annotation.
+     *
+     * @param annotationInfo the annotation metadata
+     * @return the first path value or empty string if not found
+     */
     private String extractPath(AnnotationInfo annotationInfo) {
         if (annotationInfo == null) {
             return "";
@@ -175,6 +246,12 @@ public class ApiCollector {
         return "";
     }
 
+    /**
+     * Extracts HTTP method from @RequestMapping annotation.
+     *
+     * @param annotationInfo the @RequestMapping annotation metadata
+     * @return the HTTP method or GET if not specified
+     */
     private HTTPMethod extractHttpMethod(AnnotationInfo annotationInfo) {
         if (annotationInfo == null) {
             return HTTPMethod.GET;
@@ -198,6 +275,12 @@ public class ApiCollector {
         return HTTPMethod.GET;
     }
 
+    /**
+     * Parses HTTP method from string representation.
+     *
+     * @param methodStr the method string (e.g., "GET", "RequestMethod.POST")
+     * @return corresponding HTTPMethod enum value
+     */
     private HTTPMethod parseHttpMethodFromString(String methodStr) {
         if (methodStr.contains(".")) {
             methodStr = methodStr.substring(methodStr.lastIndexOf('.') + 1);
@@ -210,6 +293,12 @@ public class ApiCollector {
         }
     }
 
+    /**
+     * Normalizes a path string by ensuring leading slash and no trailing slash.
+     *
+     * @param path the raw path string
+     * @return normalized path
+     */
     private String formatPath(String path) {
         if (path == null || path.isEmpty()) {
             return "";
@@ -223,6 +312,13 @@ public class ApiCollector {
         return path;
     }
 
+    /**
+     * Extracts string array values from annotation attributes.
+     *
+     * @param annotationInfo the annotation metadata
+     * @param key the attribute name to extract
+     * @return list of string values or empty list if not found
+     */
     private List<String> extractStringArray(AnnotationInfo annotationInfo, String key) {
         if (annotationInfo == null) {
             return Collections.emptyList();
@@ -238,13 +334,28 @@ public class ApiCollector {
         return Collections.emptyList();
     }
 
+    /**
+     * Resolves produces/consumes media types with method-level overriding class-level values.
+     *
+     * @param classLevel the class-level media types
+     * @param methodAnnotation the method annotation metadata
+     * @param key the attribute name ("produces" or "consumes")
+     * @return effective media types
+     */
     private List<String> resolveConsumesOrProduces(List<String> classLevel,
         AnnotationInfo methodAnnotation, String key) {
         List<String> methodLevel = extractStringArray(methodAnnotation, key);
         return !methodLevel.isEmpty() ? methodLevel : classLevel;
     }
 
-    private DtoSchema extractRequestDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
+    /**
+     * Extracts request DTO schema from method parameters.
+     *
+     * @param methodInfo the method metadata
+     * @param httpMethod the HTTP method of the endpoint
+     * @return list of FieldMeta describing the request body or null if not applicable
+     */
+    private List<FieldMeta> extractRequestDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
         if (httpMethod != HTTPMethod.POST && httpMethod != HTTPMethod.PUT
             && httpMethod != HTTPMethod.PATCH) {
             return null;
@@ -254,9 +365,8 @@ public class ApiCollector {
             AnnotationInfoList paramAnnotations = paramInfo.getAnnotationInfo();
 
             if (paramAnnotations.containsName("org.springframework.web.bind.annotation.RequestBody")
-                ||
-                paramAnnotations.containsName(
-                    "org.springframework.web.bind.annotation.ModelAttribute")) {
+                || paramAnnotations.containsName(
+                "org.springframework.web.bind.annotation.ModelAttribute")) {
 
                 String typeName = paramInfo.getTypeDescriptor().toString();
 
@@ -273,7 +383,13 @@ public class ApiCollector {
         return null;
     }
 
-    private DtoSchema extractResponseDtoSchema(MethodInfo methodInfo) {
+    /**
+     * Extracts response DTO schema from method return type.
+     *
+     * @param methodInfo the method metadata
+     * @return list of FieldMeta describing the response body or null if not applicable
+     */
+    private List<FieldMeta> extractResponseDtoSchema(MethodInfo methodInfo) {
         String returnTypeName = methodInfo.getTypeDescriptor().getResultType().toString();
         try {
             Class<?> returnClass = loadClass(returnTypeName);
@@ -308,6 +424,57 @@ public class ApiCollector {
         return null;
     }
 
+    /**
+     * Extracts parameters of a specific annotation type from method parameters.
+     *
+     * @param methodInfo the method metadata
+     * @param annotationName the fully-qualified annotation class name
+     * @return list of Parameter objects or null if none found
+     */
+    private List<Parameter> extractParameters(MethodInfo methodInfo, String annotationName) {
+        List<Parameter> parameters = new ArrayList<>();
+
+        for (MethodParameterInfo paramInfo : methodInfo.getParameterInfo()) {
+            AnnotationInfoList paramAnnotations = paramInfo.getAnnotationInfo();
+            AnnotationInfo annotation = paramAnnotations.get(annotationName);
+            if (annotation != null) {
+                String paramName = extractAnnotationValue(annotation, "value", "name");
+                if (paramName.isEmpty()) {
+                    paramName = paramInfo.getName();
+                }
+                String paramType = paramInfo.getTypeDescriptor().toString();
+                parameters.add(new Parameter(paramType, paramName));
+            }
+        }
+
+        return parameters.isEmpty() ? null : parameters;
+    }
+
+    /**
+     * Extracts a single value from annotation attributes.
+     *
+     * @param annotation the annotation metadata
+     * @param keys the attribute names to try (in order)
+     * @return the first found value or empty string
+     */
+    private String extractAnnotationValue(AnnotationInfo annotation, String... keys) {
+        if (annotation == null) {
+            return "";
+        }
+        return Arrays.stream(keys)
+            .map(key -> annotation.getParameterValues().getValue(key))
+            .filter(Objects::nonNull)
+            .map(value -> value instanceof String[] ? ((String[]) value)[0] : value.toString())
+            .findFirst()
+            .orElse("");
+    }
+
+    /**
+     * Gets the generic return type of a method using reflection.
+     *
+     * @param methodInfo the method metadata
+     * @return the generic return type or null if not available
+     */
     private Type getGenericReturnType(MethodInfo methodInfo) {
         try {
             Class<?> clazz = loadClass(methodInfo.getClassInfo().getName());
@@ -323,10 +490,17 @@ public class ApiCollector {
         return null;
     }
 
-    private DtoSchema analyzeDto(Class<?> dtoClass, Set<Class<?>> visited) {
+    /**
+     * Analyzes a DTO class and its fields recursively.
+     *
+     * @param dtoClass the class to analyze
+     * @param visited set of already visited classes to prevent cycles
+     * @return list of FieldMeta describing the DTO structure
+     */
+    private List<FieldMeta> analyzeDto(Class<?> dtoClass, Set<Class<?>> visited) {
 
         if (dtoClass == null || visited.contains(dtoClass)) {
-            return new DtoSchema(new ArrayList<>());
+            return new ArrayList<>();
         }
         visited.add(dtoClass);
 
@@ -349,19 +523,25 @@ public class ApiCollector {
                 fieldType = getTypeName(collectionType);
 
                 if (collectionType instanceof Class<?> && isDTO((Class<?>) collectionType)) {
-                    DtoSchema nestedSchema = analyzeDto((Class<?>) collectionType, visited);
-                    nestedFields.addAll(nestedSchema.getFields());
+                    List<FieldMeta> nestedSchema = analyzeDto((Class<?>) collectionType, visited);
+                    nestedFields.addAll(nestedSchema);
                 }
             } else if (isDTO(field.getType())) {
-                DtoSchema nestedSchema = analyzeDto(field.getType(), visited);
-                nestedFields.addAll(nestedSchema.getFields());
+                List<FieldMeta> nestedSchema = analyzeDto(field.getType(), visited);
+                nestedFields.addAll(nestedSchema);
             }
 
             fields.add(new FieldMeta(fieldName, fieldType, nestedFields));
         }
-        return new DtoSchema(fields);
+        return new ArrayList<>(fields);
     }
 
+    /**
+     * Gets the type name with full qualification.
+     *
+     * @param type the type to get name for
+     * @return fully-qualified type name
+     */
     private String getTypeName(Type type) {
         if (type instanceof Class<?>) {
             return ((Class<?>) type).getName();
@@ -377,8 +557,17 @@ public class ApiCollector {
         return type.toString();
     }
 
+    /**
+     * Loads a class by name using the scanner's classloader.
+     *
+     * @param className the class name to load
+     * @return the loaded Class object
+     * @throws ClassNotFoundException if the class cannot be loaded
+     */
     private Class<?> loadClass(String className) throws ClassNotFoundException {
-        if (className == null) return null;
+        if (className == null) {
+            return null;
+        }
 
         String normalizedClassName = className
             .replaceAll("\\[.*\\]", "")
@@ -409,6 +598,12 @@ public class ApiCollector {
             : Class.forName(normalizedClassName);
     }
 
+    /**
+     * Determines if a class is a DTO (Data Transfer Object).
+     *
+     * @param clazz the class to check
+     * @return true if the class meets DTO criteria
+     */
     private boolean isDTO(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.getName().startsWith("java.")) {
             return false;

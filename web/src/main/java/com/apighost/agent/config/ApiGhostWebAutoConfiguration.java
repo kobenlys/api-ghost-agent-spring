@@ -60,7 +60,7 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public ApiCollector apiCollector(ApiGhostProperties apiGhostProperties) {
-        return new ApiCollector(apiGhostProperties.getBasePackage());
+        return new ApiCollector(apiGhostProperties.getBasePackage(), apiGhostProperties.getBaseUrl());
     }
 
     @Bean
