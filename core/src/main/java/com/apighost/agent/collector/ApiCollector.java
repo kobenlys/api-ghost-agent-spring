@@ -3,6 +3,7 @@ package com.apighost.agent.collector;
 import com.apighost.agent.model.DtoSchema;
 import com.apighost.agent.model.FieldMeta;
 import com.apighost.model.scenario.step.HTTPMethod;
+import com.apighost.model.scenario.step.ProtocolType;
 import io.github.classgraph.MethodParameterInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -85,6 +86,7 @@ public class ApiCollector {
     private EndPoint toEndpoint(MethodInfo methodInfo, String classPath, List<String> classProduces,
         List<String> classConsumes) {
 
+        String methodName = methodInfo.getName();
         AnnotationInfoList methodAnnotations = methodInfo.getAnnotationInfo();
 
         HTTPMethod httpMethod = null;
@@ -146,11 +148,12 @@ public class ApiCollector {
         if (httpMethod == null || path.isEmpty()) {
             return null;
         }
-
         String fullPath = classPath + formatPath(path);
-        DtoSchema dtoSchema = extractDtoSchema(methodInfo, httpMethod);
+        DtoSchema requestSchema = extractRequestDtoSchema(methodInfo, httpMethod);
+        DtoSchema responseSchema = extractResponseDtoSchema(methodInfo);
 
-        return new EndPoint(httpMethod, fullPath, produces, consumes, dtoSchema);
+        return new EndPoint(ProtocolType.HTTP, methodName, httpMethod, fullPath, produces, consumes, requestSchema,
+            responseSchema);
     }
 
     private String extractPath(AnnotationInfo annotationInfo) {
@@ -194,6 +197,7 @@ public class ApiCollector {
 
         return HTTPMethod.GET;
     }
+
     private HTTPMethod parseHttpMethodFromString(String methodStr) {
         if (methodStr.contains(".")) {
             methodStr = methodStr.substring(methodStr.lastIndexOf('.') + 1);
@@ -205,6 +209,7 @@ public class ApiCollector {
             return HTTPMethod.GET;
         }
     }
+
     private String formatPath(String path) {
         if (path == null || path.isEmpty()) {
             return "";
@@ -239,8 +244,9 @@ public class ApiCollector {
         return !methodLevel.isEmpty() ? methodLevel : classLevel;
     }
 
-    private DtoSchema extractDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
-        if (httpMethod != HTTPMethod.POST && httpMethod != HTTPMethod.PUT && httpMethod != HTTPMethod.PATCH) {
+    private DtoSchema extractRequestDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
+        if (httpMethod != HTTPMethod.POST && httpMethod != HTTPMethod.PUT
+            && httpMethod != HTTPMethod.PATCH) {
             return null;
         }
 
@@ -267,6 +273,56 @@ public class ApiCollector {
         return null;
     }
 
+    private DtoSchema extractResponseDtoSchema(MethodInfo methodInfo) {
+        String returnTypeName = methodInfo.getTypeDescriptor().getResultType().toString();
+        try {
+            Class<?> returnClass = loadClass(returnTypeName);
+            if (returnClass == null || returnClass == void.class) {
+                return null;
+            }
+
+            Type genericReturnType = getGenericReturnType(methodInfo);
+            Class<?> effectiveReturnClass = returnClass;
+
+            if ("org.springframework.http.ResponseEntity".equals(returnClass.getName())
+                && genericReturnType instanceof ParameterizedType) {
+                ParameterizedType parameterizedType = (ParameterizedType) genericReturnType;
+                Type actualType = parameterizedType.getActualTypeArguments()[0];
+                String actualTypeName = getTypeName(actualType);
+                effectiveReturnClass = loadClass(actualTypeName);
+            } else if (Collection.class.isAssignableFrom(returnClass)
+                && genericReturnType instanceof ParameterizedType) {
+                ParameterizedType parameterizedType = (ParameterizedType) genericReturnType;
+                Type actualType = parameterizedType.getActualTypeArguments()[0];
+                String actualTypeName = getTypeName(actualType);
+                effectiveReturnClass = loadClass(actualTypeName);
+            }
+
+            if (effectiveReturnClass != null && isDTO(effectiveReturnClass)) {
+                return analyzeDto(effectiveReturnClass, new HashSet<>());
+            }
+
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+        return null;
+    }
+
+    private Type getGenericReturnType(MethodInfo methodInfo) {
+        try {
+            Class<?> clazz = loadClass(methodInfo.getClassInfo().getName());
+            for (Method method : clazz.getDeclaredMethods()) {
+                if (method.getName().equals(methodInfo.getName()) &&
+                    method.getParameterCount() == methodInfo.getParameterInfo().length) {
+                    return method.getGenericReturnType();
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+        return null;
+    }
+
     private DtoSchema analyzeDto(Class<?> dtoClass, Set<Class<?>> visited) {
 
         if (dtoClass == null || visited.contains(dtoClass)) {
@@ -276,7 +332,8 @@ public class ApiCollector {
 
         List<FieldMeta> fields = new ArrayList<>();
         for (Field field : dtoClass.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
+            if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(
+                field.getModifiers())) {
                 continue;
             }
 
@@ -285,7 +342,8 @@ public class ApiCollector {
             List<FieldMeta> nestedFields = new ArrayList<>();
 
             Type genericType = field.getGenericType();
-            if (genericType instanceof ParameterizedType && Collection.class.isAssignableFrom(field.getType())) {
+            if (genericType instanceof ParameterizedType && Collection.class.isAssignableFrom(
+                field.getType())) {
                 ParameterizedType parameterizedType = (ParameterizedType) genericType;
                 Type collectionType = parameterizedType.getActualTypeArguments()[0];
                 fieldType = getTypeName(collectionType);
@@ -306,26 +364,26 @@ public class ApiCollector {
 
     private String getTypeName(Type type) {
         if (type instanceof Class<?>) {
-            return ((Class<?>) type).getSimpleName();
+            return ((Class<?>) type).getName();
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             Type rawType = parameterizedType.getRawType();
-            return ((Class<?>) rawType).getSimpleName();
+            if (rawType instanceof Class<?>) {
+                return ((Class<?>) rawType).getName();
+            } else {
+                return rawType.getTypeName();
+            }
         }
         return type.toString();
     }
 
     private Class<?> loadClass(String className) throws ClassNotFoundException {
-        String normalizedClassName = className;
+        if (className == null) return null;
 
-        if (normalizedClassName.contains("<")) {
-            normalizedClassName = normalizedClassName.substring(0,
-                normalizedClassName.indexOf('<'));
-        }
-        if (normalizedClassName.contains("[")) {
-            normalizedClassName = normalizedClassName.substring(0,
-                normalizedClassName.indexOf('['));
-        }
+        String normalizedClassName = className
+            .replaceAll("\\[.*\\]", "")
+            .replaceAll("<.*>", "")
+            .trim();
         switch (normalizedClassName) {
             case "boolean":
                 return boolean.class;
@@ -360,7 +418,8 @@ public class ApiCollector {
         for (Method method : clazz.getDeclaredMethods()) {
             if (Modifier.isPublic(method.getModifiers())) {
                 String name = method.getName();
-                if ((name.startsWith("get") || (name.startsWith("is") && method.getReturnType() == boolean.class))
+                if ((name.startsWith("get") || (name.startsWith("is")
+                    && method.getReturnType() == boolean.class))
                     && method.getParameterCount() == 0) {
                     getterCount++;
                 }
