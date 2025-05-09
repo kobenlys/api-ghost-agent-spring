@@ -25,7 +25,7 @@ public class ScenarioGUIController {
      *
      * @return a forward directive to the scenario testing HTML UI
      */
-    @GetMapping("/apighost-ui")
+    @GetMapping("/apighost-ui/**")
     public String showGUI() {
         return "forward:/apighost-ui.html";
     }
