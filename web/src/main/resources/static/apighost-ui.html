@@ -54,14 +54,14 @@
             log(`   - Method: ${data.method}`);
             log(`   - URL: ${data.url}`);
             log(`   - Request Headers: ${JSON.stringify(data.requestHeader)}`);
-            log(`   - Request Body: ${data.requestBody}`);
+            log(`   - Request Body: ${data.requestBody.json}`);
             log(`   - Status: ${data.status}`);
             log(`   - Response Headers: ${JSON.stringify(data.responseHeaders)}`);
             log(`   - Response Body: ${data.responseBody}`);
             log(`   - Start Time: ${data.startTime}`);
             log(`   - End Time: ${data.endTime}`);
             log(`   - Duration: ${data.durationMs}ms`);
-            log(`   - Success: ${data.requestSuccess}`);
+            log(`   - Success: ${data.isRequestSuccess}`);
             log(`     `);
         });
 
