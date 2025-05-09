@@ -2,11 +2,13 @@ package com.apighost.agent.controller;
 
 import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.engine.FileLoaderEngine;
-import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.file.FileExporter;
 import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.agent.model.ScenarioListResponse;
 import com.apighost.agent.model.ScenarioResultListResponse;
+import com.apighost.agent.notifier.ResultSseNotifier;
+import com.apighost.agent.notifier.ScenarioResultNotifier;
+import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
 import com.apighost.model.scenario.Scenario;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,48 +36,39 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/apighost")
 public class EngineController {
-    private final ScenarioTestExecutor scenarioTestExecutor;
+
+    private final ScenarioTestOrchestrator scenarioTestOrchestrator;
     private final FileLoaderEngine fileLoaderEngine;
     private final FileExporter fileExporter;
     private final ApiGhostSetting apiGhostSetting;
-    /**
-     * Constructs a new {@code EngineController} with the required executor and engine.
-     *
-     * @param scenarioTestExecutor the component responsible for executing scenario tests
-     * @param fileLoaderEngine     the engine responsible for loading scenario files and results
-     */
-    public EngineController(ScenarioTestExecutor scenarioTestExecutor,
+
+
+    public EngineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
         FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
         ApiGhostSetting apiGhostSetting) {
-        this.scenarioTestExecutor = scenarioTestExecutor;
+        this.scenarioTestOrchestrator = scenarioTestOrchestrator;
         this.fileLoaderEngine = fileLoaderEngine;
         this.fileExporter = fileExporter;
         this.apiGhostSetting = apiGhostSetting;
     }
 
     /**
-     * Executes a specified scenario test and streams its result steps and summary through SSE.
+     * Executes a scenario test and streams real-time results to the client using Server-Sent Events (SSE).
      * <p>
-     * The scenario is processed in a separate thread to allow non-blocking result streaming.
-     * Clients can consume events named <code>stepResult</code> and <code>complete</code>.
+     * This endpoint initializes an {@link SseEmitter} to asynchronously send updates about the scenario execution.
+     * Events are sent as the test progresses, and include step results and a completion signal.
      * </p>
      *
-     * @param scenarioName the name of the scenario (without file extension)
-     * @return an {@link SseEmitter} that streams the test execution results
+     * @param scenarioName the name of the scenario to be executed (without file extension)
+     * @return an {@link SseEmitter} for streaming scenario execution updates to the client
      */
     @GetMapping("/scenario-test")
     public SseEmitter scenarioExecutor(@RequestParam("scenarioName") String scenarioName) {
-        SseEmitter emitter = new SseEmitter();
-        new Thread(() -> {
-            try {
-                scenarioTestExecutor.testExecutor(scenarioName, emitter);
-                emitter.complete();
-            } catch (Exception e) {
-                emitter.completeWithError(e);
-            }
-        }).start();
 
-        return emitter;
+        SseEmitter sseEmitter = new SseEmitter();
+        ScenarioResultNotifier notifier = new ResultSseNotifier(sseEmitter);
+        scenarioTestOrchestrator.executeScenario(scenarioName, notifier);
+        return sseEmitter;
     }
 
     /**
@@ -135,8 +128,10 @@ public class EngineController {
      * @return a {@link ResponseEntity} containing the export result, including file name and status
      */
     @PostMapping("/scenario-export")
-    public ResponseEntity<ScenarioExportResponse> exportScenarioFile(@RequestBody Scenario scenario){
-        return ResponseEntity.ok(fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
-            apiGhostSetting.getScenarioPath()));
+    public ResponseEntity<ScenarioExportResponse> exportScenarioFile(
+        @RequestBody Scenario scenario) {
+        return ResponseEntity.ok(
+            fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
+                apiGhostSetting.getScenarioPath()));
     }
 }

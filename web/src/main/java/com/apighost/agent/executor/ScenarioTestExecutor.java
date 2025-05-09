@@ -1,13 +1,12 @@
 package com.apighost.agent.executor;
 
+import com.apighost.agent.config.ApiGhostProperties;
 import com.apighost.agent.config.ApiGhostSetting;
-import com.apighost.agent.file.FileExporter;
-import com.apighost.agent.file.ScenarioFileLoader;
 import com.apighost.agent.model.ResponseResult;
+import com.apighost.agent.util.ObjectMapperHolder;
 import com.apighost.agent.util.TimeUtils;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
-import com.apighost.model.scenario.request.Request;
 import com.apighost.model.scenario.result.ResultStep;
 import com.apighost.model.scenario.result.ResultStep.Builder;
 import com.apighost.model.scenario.step.ProtocolType;
@@ -18,34 +17,17 @@ import com.apighost.parser.flattener.Flattener;
 import com.apighost.parser.flattener.JsonFlattener;
 import com.apighost.parser.template.TemplateConvertor;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-
 import java.util.Map;
-
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
+import java.util.function.Consumer;
 
 /**
  * Executes scenario-based HTTP tests by reading and running steps defined in YAML files. Sends
@@ -54,221 +36,116 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * @author kobenlys
  * @version BETA-0.0.1
  */
-@Component
 public class ScenarioTestExecutor {
 
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
-    private final ScenarioFileLoader scenarioFileLoader;
-    private final FileExporter fileExporter;
     private final ApiGhostSetting apiGhostSetting;
-    private Flattener flattener;
+    private final ApiGhostProperties apiGhostProperties;
+    private final HttpExecutor httpExecutor;
+    private final Flattener flattener;
 
     private static final Logger log = LoggerFactory.getLogger(ScenarioTestExecutor.class);
 
-    /**
-     * Constructs a new {@code ScenarioTestExecutor} with required dependencies.
-     *
-     * @param restTemplate       the HTTP client used to send requests during scenario execution
-     * @param objectMapper       the JSON object mapper used for serializing and deserializing data
-     * @param scenarioFileLoader the component responsible for loading scenario definitions
-     * @param apiGhostSetting    the configuration settings for API Ghost execution environment
-     */
-    public ScenarioTestExecutor(RestTemplate restTemplate, ObjectMapper objectMapper,
-        ScenarioFileLoader scenarioFileLoader, FileExporter fileExporter,
-        ApiGhostSetting apiGhostSetting) {
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
-        this.scenarioFileLoader = scenarioFileLoader;
-        this.fileExporter = fileExporter;
+    public ScenarioTestExecutor(ApiGhostSetting apiGhostSetting,
+        ApiGhostProperties apiGhostProperties, HttpExecutor httpExecutor) {
+
+        this.objectMapper = ObjectMapperHolder.getInstance();
         this.apiGhostSetting = apiGhostSetting;
+        this.apiGhostProperties = apiGhostProperties;
+        this.httpExecutor = httpExecutor;
+        this.flattener = new JsonFlattener(objectMapper);
     }
 
     /**
-     * Executes a scenario test specified by its name and emits step-by-step results via SSE.
+     * Executes a scenario test, running through the steps defined in the scenario and executing
+     * HTTP requests. The results are processed and stored step by step, and the final result is
+     * returned as a {@link ScenarioResult}.
      *
-     * @param scenarioName the name of the scenario file (without ".yaml")
-     * @param emitter      the {@link SseEmitter} used to send results in real time
-     * @throws IOException if the scenario file cannot be read or parsed
+     * <p>
+     * The execution involves sending HTTP requests, matching the expected responses with
+     * {@link Then} clauses, executing any actions defined in the {@link Then} clauses, and
+     * proceeding to the next step based on conditions. If any failure occurs, the test execution
+     * halts.
+     * </p>
+     *
+     * @param scenario the scenario to execute, containing a sequence of steps to be tested
+     * @param callback a callback function to process each step result
+     * @return a {@link ScenarioResult} containing the outcome of the scenario execution, including
+     * step results
      */
-    public void testExecutor(String scenarioName, SseEmitter emitter) throws IOException {
+    public ScenarioResult testExecutor(Scenario scenario, Consumer<ResultStep> callback) {
         List<ResultStep> resultSteps = new ArrayList<>();
         Map<String, Object> store = new HashMap<>();
-        flattener = new JsonFlattener(objectMapper);
 
-        Scenario scenarioInfo = null;
         long totalDurationMs = 0;
         int stepCount = 0;
         boolean isTotalSuccess = true;
-        log.info("Scenario Test Start - name: {}", scenarioName);
-        try {
-            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            File scenarioFile = scenarioFileLoader.findScenarioFile(scenarioName);
-            scenarioInfo = mapper.readValue(scenarioFile, Scenario.class);
 
-            if (scenarioInfo.getSteps().isEmpty()) {
-                return;
+        log.info("Scenario Test Start - name: {}", scenario.getName());
+        String nowStepName = scenario.getSteps().keySet().iterator().next();
+
+        while (true) {
+            Step presentStep = scenario.getSteps().get(nowStepName);
+            ResponseResult responseResult = httpExecutor.httpProtocolExecutor(
+                presentStep.getRequest());
+
+            if (responseResult == null) {
+                break;
             }
 
-            String beforeStepName = scenarioInfo.getSteps().keySet().iterator().next();
-            Step presentStep = scenarioInfo.getSteps().values().iterator().next();
-
-            while (true) {
-                ResponseResult responseResult = httpProtocolExecutor(presentStep.getRequest());
-                if (responseResult == null) {
-                    break;
-                }
-
-                Map<String, Object> flatResponseBody = flattener.flatten(
+            Map<String, Object> flatResponseBody;
+            String responseBodyStr = "";
+            try {
+                flatResponseBody = flattener.flatten(
                     objectMapper.writeValueAsString(responseResult.getBody()));
-
-                Then matchedThen = matchsExpected(responseResult.getHttpStatus().value(),
-                    flatResponseBody, presentStep.getRoute());
-
-                String nextStep =
-                    matchedThen == null ? null : executeThen(matchedThen, flatResponseBody, store);
-
-                ResultStep resultStep =
-                    new Builder().stepName(beforeStepName).type(ProtocolType.HTTP)
-                        .url(presentStep.getRequest().getUrl())
-                        .method(responseResult.getHttpMethod())
-                        .requestHeader(presentStep.getRequest().getHeader())
-                        .requestBody(presentStep.getRequest().getBody())
-                        .status(responseResult.getHttpStatus().value())
-                        .responseHeaders(responseResult.getHeader())
-                        .responseBody(objectMapper.writeValueAsString(responseResult.getBody()))
-                        .startTime(TimeUtils.convertFormat(responseResult.getStartTime()))
-                        .endTime(TimeUtils.convertFormat(responseResult.getEndTime()))
-                        .durationMs(responseResult.getDurationMs())
-                        .isRequestSuccess(matchedThen != null).route(presentStep.getRoute())
-                        .nextStep(nextStep).build();
-
-                stepCount++;
-                totalDurationMs += responseResult.getDurationMs();
-                emitter.send(SseEmitter.event().name("stepResult").data(resultStep));
-                resultSteps.add(resultStep);
-
-                if (!scenarioInfo.getSteps().containsKey(nextStep)) {
-                    if (nextStep == null) {
-                        isTotalSuccess = false;
-                    }
-                    break;
-                }
-
-                storedResponseValue(store, responseResult.getBody(), matchedThen);
-                beforeStepName = nextStep;
-                presentStep = scenarioInfo.getSteps().get(nextStep);
+                responseBodyStr = objectMapper.writeValueAsString(responseResult.getBody());
+            } catch (JsonProcessingException e) {
+                isTotalSuccess = false;
+                break;
             }
-        } catch (IOException e) {
-            log.error("Error - Scenario-test : {}", e.getMessage());
-            isTotalSuccess = false;
+
+            Then matchedThen = matchsExpected(responseResult.getHttpStatus().value(),
+                flatResponseBody, presentStep.getRoute());
+            String nextStep =
+                matchedThen == null ? null : executeThen(matchedThen, flatResponseBody, store);
+
+            ResultStep resultStep =
+                new Builder().stepName(nowStepName).type(ProtocolType.HTTP)
+                    .url(presentStep.getRequest().getUrl())
+                    .method(responseResult.getHttpMethod())
+                    .requestHeader(presentStep.getRequest().getHeader())
+                    .requestBody(presentStep.getRequest().getBody())
+                    .status(responseResult.getHttpStatus().value())
+                    .responseHeaders(responseResult.getHeader())
+                    .responseBody(responseBodyStr)
+                    .startTime(TimeUtils.convertFormat(responseResult.getStartTime()))
+                    .endTime(TimeUtils.convertFormat(responseResult.getEndTime()))
+                    .durationMs(responseResult.getDurationMs())
+                    .isRequestSuccess(matchedThen != null).route(presentStep.getRoute())
+                    .nextStep(nextStep).build();
+
+            stepCount++;
+            totalDurationMs += responseResult.getDurationMs();
+            callback.accept(resultStep);
+            resultSteps.add(resultStep);
+
+            if (!scenario.getSteps().containsKey(nextStep)) {
+                if (nextStep == null || nextStep.isEmpty()) {
+                    isTotalSuccess = false;
+                }
+                break;
+            }
+
+            storedResponseValue(store, responseResult.getBody(), matchedThen);
+            nowStepName = nextStep;
         }
 
-        ScenarioResult scenarioResult = new ScenarioResult.Builder().name(scenarioInfo.getName())
-            .description(scenarioInfo.getDescription()).executedAt(TimeUtils.getNow())
+        return new ScenarioResult.Builder().name(scenario.getName())
+            .description(scenario.getDescription()).executedAt(TimeUtils.getNow())
             .totalDurationMs(totalDurationMs)
             .averageDurationMs(stepCount == 0 ? 0 : totalDurationMs / stepCount)
-            .filePath(apiGhostSetting.getResultPath()).baseUrl("/localhost:8080")
+            .filePath(apiGhostSetting.getResultPath()).baseUrl(apiGhostProperties.getBaseUrl())
             .isScenarioSuccess(isTotalSuccess).results(resultSteps).build();
-
-        fileExporter.exportFile(scenarioResult, apiGhostSetting.getFormatJson(),
-            apiGhostSetting.getResultPath());
-        emitter.send(SseEmitter.event().name("complete").data(scenarioResult));
-    }
-
-    /**
-     * Executes an HTTP request defined in the scenario {@link Request} and captures the response.
-     *
-     * @param scenarioRequest the HTTP request definition in the scenario
-     * @return a {@link ResponseResult} containing the status, headers, body, and duration
-     */
-    private ResponseResult httpProtocolExecutor(Request scenarioRequest) {
-
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            HttpEntity<?> httpEntity;
-            HttpMethod httpMethod = HttpMethod.valueOf(scenarioRequest.getMethod().name());
-            if (scenarioRequest.getHeader() != null) {
-                scenarioRequest.getHeader().forEach(headers::add);
-            }
-
-            if (httpMethod == HttpMethod.GET || httpMethod == HttpMethod.DELETE) {
-                httpEntity = new HttpEntity<>(headers);
-            } else {
-
-                Map<String, Object> bodyMap =
-                    objectMapper.readValue(scenarioRequest.getBody().getJson(),
-                        new TypeReference<>() {
-                        });
-
-                httpEntity = new HttpEntity<>(bodyMap, headers);
-            }
-
-            long startTime = System.currentTimeMillis();
-            ResponseEntity<String> response =
-                restTemplate.exchange(scenarioRequest.getUrl(), httpMethod, httpEntity,
-                    String.class);
-            long endTime = System.currentTimeMillis();
-
-            String responseBodyStr = response.getBody();
-            Map<String, Object> resBody = getParseBody(responseBodyStr);
-            HttpStatusCode httpStatus = HttpStatus.resolve(response.getStatusCode().value());
-            HttpHeaders responseHeaders = response.getHeaders();
-
-            Map<String, String> resHeader = new HashMap<>();
-            for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
-                if (!entry.getValue().isEmpty()) {
-                    resHeader.put(entry.getKey(), entry.getValue().get(0));
-                }
-            }
-
-            return new ResponseResult.Builder().header(resHeader).body(resBody)
-                .httpStatus(httpStatus).httpMethod(scenarioRequest.getMethod())
-                .startTime(startTime).endTime(endTime)
-                .durationMs((int) (endTime - startTime)).build();
-
-        } catch (JsonProcessingException e) {
-            log.error("Error - json parsing : {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Parses a raw HTTP response body string into a {@code Map<String, Object>} representation.
-     * Supports JSON object, string, boolean, number, and handles plain text gracefully.
-     *
-     * @param responseBodyStr the raw HTTP response body as a string
-     * @return a parsed body as a map
-     * @throws JsonProcessingException if the input is a malformed JSON string
-     */
-    private Map<String, Object> getParseBody(String responseBodyStr)
-        throws JsonProcessingException {
-        Map<String, Object> resBody;
-
-        if (!isJson(responseBodyStr)) {
-            return Map.of("value", responseBodyStr);
-        }
-
-        if (responseBodyStr == null || responseBodyStr.trim().isEmpty()) {
-            resBody = Collections.emptyMap();
-        } else {
-
-            try {
-                JsonNode jsonNode = objectMapper.readTree(responseBodyStr);
-
-                return switch (jsonNode.getNodeType()) {
-                    case OBJECT -> objectMapper.readValue(responseBodyStr, new TypeReference<>() {
-                    });
-                    case BOOLEAN -> Map.of("value", jsonNode.asBoolean());
-                    case NUMBER -> Map.of("value", jsonNode.numberValue());
-                    case STRING -> Map.of("value", jsonNode.asText());
-                    default -> Collections.emptyMap();
-                };
-            } catch (JsonProcessingException e) {
-                return Map.of("value", responseBodyStr);
-            }
-        }
-        return resBody;
     }
 
     /**
@@ -442,19 +319,5 @@ public class ScenarioTestExecutor {
             String convertedValue = TemplateConvertor.convert(originalValue, store);
             entry.setValue(convertedValue);
         }
-    }
-
-    /**
-     * Checks whether a given string can be interpreted as a valid JSON content.
-     *
-     * @param targetString the string to check
-     * @return {@code true} if the string is likely JSON, {@code false} otherwise
-     */
-    private boolean isJson(String targetString) {
-        targetString = targetString.trim();
-
-        return (targetString.startsWith("{") && targetString.endsWith(
-            "}")) || (targetString.startsWith("[") && targetString.endsWith(
-            "]")) || targetString.equals("false") || targetString.equals("null");
     }
 }
