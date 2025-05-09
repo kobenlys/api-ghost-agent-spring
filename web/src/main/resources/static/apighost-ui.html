@@ -54,7 +54,8 @@
             log(`   - Method: ${data.method}`);
             log(`   - URL: ${data.url}`);
             log(`   - Request Headers: ${JSON.stringify(data.requestHeader)}`);
-            log(`   - Request Body: ${data.requestBody.json}`);
+            const requestBody = data.requestBody?.json ?? "{}";
+            log(`   - Request Body: ${requestBody}`);
             log(`   - Status: ${data.status}`);
             log(`   - Response Headers: ${JSON.stringify(data.responseHeaders)}`);
             log(`   - Response Body: ${data.responseBody}`);
