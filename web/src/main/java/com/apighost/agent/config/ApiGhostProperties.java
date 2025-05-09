@@ -19,6 +19,12 @@ public class ApiGhostProperties {
     private String baseUrl;
     private String openAiKey;
 
+    public ApiGhostProperties(String basePackage, String baseUrl, String openAiKey) {
+        this.basePackage = basePackage;
+        this.baseUrl = baseUrl;
+        this.openAiKey = openAiKey;
+    }
+
     public String getBasePackage() {
         return basePackage;
     }
