@@ -1,7 +1,8 @@
 package com.apighost.agent.collector;
 
-import com.apighost.agent.model.FieldMeta;
-import com.apighost.agent.model.Parameter;
+import com.apighost.model.collector.Endpoint;
+import com.apighost.model.collector.FieldMeta;
+import com.apighost.model.collector.Parameter;
 import com.apighost.model.scenario.step.HTTPMethod;
 import com.apighost.model.scenario.step.ProtocolType;
 import io.github.classgraph.MethodParameterInfo;
@@ -17,8 +18,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import com.apighost.agent.model.EndPoint;
-
 import io.github.classgraph.AnnotationInfo;
 import io.github.classgraph.AnnotationInfoList;
 import io.github.classgraph.ClassGraph;
@@ -27,6 +26,7 @@ import io.github.classgraph.MethodInfo;
 import io.github.classgraph.ScanResult;
 import java.util.Objects;
 import java.util.Set;
+
 /**
  * Collects API endpoint information from Spring controllers using classpath scanning.
  *
@@ -47,14 +47,14 @@ public class ApiCollector {
 
     private final String basePackage;
     private final String baseUrl;
-    private final List<EndPoint> endPointList = new ArrayList<>();
+    private final List<Endpoint> endPointList = new ArrayList<>();
     private ClassLoader classLoader;
 
     /**
      * Constructs an ApiCollector for the specified base package and base URL.
      *
      * @param basePackage the root package to scan for controllers
-     * @param baseUrl the base URL for all collected endpoints
+     * @param baseUrl     the base URL for all collected endpoints
      */
     public ApiCollector(String basePackage, String baseUrl) {
         this.basePackage = basePackage;
@@ -66,7 +66,7 @@ public class ApiCollector {
      *
      * @return immutable list of EndPoint objects
      */
-    public List<EndPoint> getEndPointList() {
+    public List<Endpoint> getEndPointList() {
         return endPointList;
     }
 
@@ -108,7 +108,7 @@ public class ApiCollector {
                 classPath = formatPath(classPath);
 
                 for (MethodInfo methodInfo : classInfo.getDeclaredMethodInfo()) {
-                    EndPoint endPoint = toEndpoint(methodInfo, classPath, classProduces,
+                    Endpoint endPoint = toEndpoint(methodInfo, classPath, classProduces,
                         classConsumes);
                     if (endPoint != null) {
                         endPointList.add(endPoint);
@@ -121,13 +121,13 @@ public class ApiCollector {
     /**
      * Converts a controller method to an EndPoint representation.
      *
-     * @param methodInfo the method metadata to convert
-     * @param classPath the base path from class-level @RequestMapping
+     * @param methodInfo    the method metadata to convert
+     * @param classPath     the base path from class-level @RequestMapping
      * @param classProduces the default produces media types from class
      * @param classConsumes the default consumes media types from class
      * @return EndPoint instance or null if not a valid endpoint
      */
-    private EndPoint toEndpoint(MethodInfo methodInfo, String classPath, List<String> classProduces,
+    private Endpoint toEndpoint(MethodInfo methodInfo, String classPath, List<String> classProduces,
         List<String> classConsumes) {
 
         String methodName = methodInfo.getName();
@@ -204,7 +204,7 @@ public class ApiCollector {
         List<Parameter> pathVariables = extractParameters(methodInfo,
             "org.springframework.web.bind.annotation.PathVariable");
 
-        return new EndPoint.Builder()
+        return new Endpoint.Builder()
             .protocolType(ProtocolType.HTTP)
             .baseUrl(baseUrl)
             .methodName(methodName)
@@ -316,7 +316,7 @@ public class ApiCollector {
      * Extracts string array values from annotation attributes.
      *
      * @param annotationInfo the annotation metadata
-     * @param key the attribute name to extract
+     * @param key            the attribute name to extract
      * @return list of string values or empty list if not found
      */
     private List<String> extractStringArray(AnnotationInfo annotationInfo, String key) {
@@ -337,9 +337,9 @@ public class ApiCollector {
     /**
      * Resolves produces/consumes media types with method-level overriding class-level values.
      *
-     * @param classLevel the class-level media types
+     * @param classLevel       the class-level media types
      * @param methodAnnotation the method annotation metadata
-     * @param key the attribute name ("produces" or "consumes")
+     * @param key              the attribute name ("produces" or "consumes")
      * @return effective media types
      */
     private List<String> resolveConsumesOrProduces(List<String> classLevel,
@@ -427,7 +427,7 @@ public class ApiCollector {
     /**
      * Extracts parameters of a specific annotation type from method parameters.
      *
-     * @param methodInfo the method metadata
+     * @param methodInfo     the method metadata
      * @param annotationName the fully-qualified annotation class name
      * @return list of Parameter objects or null if none found
      */
@@ -454,7 +454,7 @@ public class ApiCollector {
      * Extracts a single value from annotation attributes.
      *
      * @param annotation the annotation metadata
-     * @param keys the attribute names to try (in order)
+     * @param keys       the attribute names to try (in order)
      * @return the first found value or empty string
      */
     private String extractAnnotationValue(AnnotationInfo annotation, String... keys) {
@@ -494,7 +494,7 @@ public class ApiCollector {
      * Analyzes a DTO class and its fields recursively.
      *
      * @param dtoClass the class to analyze
-     * @param visited set of already visited classes to prevent cycles
+     * @param visited  set of already visited classes to prevent cycles
      * @return list of FieldMeta describing the DTO structure
      */
     private List<FieldMeta> analyzeDto(Class<?> dtoClass, Set<Class<?>> visited) {
