@@ -25,11 +25,11 @@ import java.util.Map;
 public class ApiGhostWebAutoConfiguration {
 
     @Bean
-    public ApiGhostProperties apiGhostProperties(Environment environment) {
-        ApiGhostProperties properties = new ApiGhostProperties();
-        String basePackage = environment.getProperty("apighost.lib.basePackage");
-        properties.setBasePackage(basePackage);
-        return properties;
+    public ApiGhostProperties apiGhostProperties(Environment env) {
+        String basePackage = env.getProperty("apighost.lib.basePackage", "./");
+        String baseUrl = env.getProperty("apighost.lib.baseUrl", "http://localhost:8080");
+        String openAiKey = env.getProperty("apighost.lib.openAiKey", "");
+        return new ApiGhostProperties(basePackage, baseUrl, openAiKey);
     }
 
     @Bean
@@ -55,13 +55,16 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public EngineController engineController(ScenarioTestExecutor scenarioTestExecutor,
-        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter, ApiGhostSetting apiGhostSetting ) {
-        return new EngineController(scenarioTestExecutor, fileLoaderEngine, fileExporter, apiGhostSetting);
+        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
+        ApiGhostSetting apiGhostSetting) {
+        return new EngineController(scenarioTestExecutor, fileLoaderEngine, fileExporter,
+            apiGhostSetting);
     }
 
     @Bean
     public ApiCollector apiCollector(ApiGhostProperties apiGhostProperties) {
-        return new ApiCollector(apiGhostProperties.getBasePackage(), apiGhostProperties.getBaseUrl());
+        return new ApiCollector(apiGhostProperties.getBasePackage(),
+            apiGhostProperties.getBaseUrl());
     }
 
     @Bean
