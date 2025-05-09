@@ -358,7 +358,7 @@ public class ApiCollector {
     private List<FieldMeta> extractRequestDtoSchema(MethodInfo methodInfo, HTTPMethod httpMethod) {
         if (httpMethod != HTTPMethod.POST && httpMethod != HTTPMethod.PUT
             && httpMethod != HTTPMethod.PATCH) {
-            return null;
+            return Collections.emptyList();
         }
 
         for (MethodParameterInfo paramInfo : methodInfo.getParameterInfo()) {
@@ -376,11 +376,11 @@ public class ApiCollector {
                         return analyzeDto(paramClass, new HashSet<>());
                     }
                 } catch (ClassNotFoundException e) {
-                    return null;
+                    return Collections.emptyList();
                 }
             }
         }
-        return null;
+        return Collections.emptyList();
     }
 
     /**
@@ -394,7 +394,7 @@ public class ApiCollector {
         try {
             Class<?> returnClass = loadClass(returnTypeName);
             if (returnClass == null || returnClass == void.class) {
-                return null;
+                return Collections.emptyList();
             }
 
             Type genericReturnType = getGenericReturnType(methodInfo);
@@ -419,9 +419,9 @@ public class ApiCollector {
             }
 
         } catch (ClassNotFoundException e) {
-            return null;
+            return Collections.emptyList();
         }
-        return null;
+        return Collections.emptyList();
     }
 
     /**
@@ -447,7 +447,7 @@ public class ApiCollector {
             }
         }
 
-        return parameters.isEmpty() ? null : parameters;
+        return parameters.isEmpty() ? Collections.emptyList() : parameters;
     }
 
     /**
