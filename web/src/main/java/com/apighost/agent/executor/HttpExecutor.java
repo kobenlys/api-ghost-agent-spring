@@ -70,10 +70,9 @@ public class HttpExecutor {
             String responseBodyStr = response.result.getBody();
             Map<String, Object> resBody = getParseBody(responseBodyStr);
             HttpStatusCode httpStatus = HttpStatus.resolve(response.result.getStatusCode().value());
-            HttpHeaders responseHeaders = response.result.getHeaders();
 
             Map<String, String> resHeader = new HashMap<>();
-            for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
+            for (Entry<String, List<String>> entry : response.result.getHeaders().entrySet()) {
                 if (!entry.getValue().isEmpty()) {
                     resHeader.put(entry.getKey(), entry.getValue().get(0));
                 }
