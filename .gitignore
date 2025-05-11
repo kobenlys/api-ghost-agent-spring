@@ -19,6 +19,9 @@
 *.tar.gz
 *.rar
 
+# EXCEPTION: allow libs/*.jar
+!libs/*.jar
+
 # intellij
 **/.DS_Store
 **/.idea
