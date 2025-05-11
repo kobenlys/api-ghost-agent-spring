@@ -1,6 +1,7 @@
 package com.apighost.agent.file;
 
 import com.apighost.agent.model.ScenarioExportResponse;
+import com.apighost.agent.util.ObjectMapperHolder;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,10 +29,9 @@ public class FileExporter {
      * Constructs a {@code FileExporter} with a configured {@link ObjectMapper}. Enables
      * pretty-printing for output files.
      *
-     * @param objectMapper the object mapper used to serialize objects to file
      */
-    public FileExporter(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public FileExporter() {
+        this.objectMapper = ObjectMapperHolder.getInstance();
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 

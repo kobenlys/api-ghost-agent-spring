@@ -5,13 +5,13 @@ import com.apighost.agent.controller.EndPointProvider;
 import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
+import com.apighost.agent.executor.HttpExecutor;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.file.FileExporter;
 import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.file.ScenarioFileLoader;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -21,7 +21,6 @@ import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.Map;
 
 @Configuration
 @PropertySource("classpath:apighost-settings.properties")
@@ -57,10 +56,10 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public EngineController engineController(ScenarioTestExecutor scenarioTestExecutor,
+    public EngineController engineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
         FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
         ApiGhostSetting apiGhostSetting) {
-        return new EngineController(scenarioTestExecutor, fileLoaderEngine, fileExporter,
+        return new EngineController(scenarioTestOrchestrator, fileLoaderEngine, fileExporter,
             apiGhostSetting);
     }
 
@@ -82,11 +81,6 @@ public class ApiGhostWebAutoConfiguration {
         return restTemplate;
     }
 
-    @Bean(name = "apighost-ObjectMapper")
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
-
     @Bean
     public ScenarioFileLoader scenarioFileLoader() {
         return new ScenarioFileLoader();
@@ -98,24 +92,33 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader, ObjectMapper objectMapper,
-        ApiGhostSetting apiGhostSetting) {
-        return new FileLoaderEngine(fileLoader, objectMapper, apiGhostSetting);
+    FileExporter fileExporter() {
+        return new FileExporter();
     }
 
     @Bean
-    public ScenarioTestExecutor scenarioTestExecutor(
-        @Qualifier("apighost-RestTemplate") RestTemplate restTemplate, ObjectMapper objectMapper,
-        ScenarioFileLoader scenarioFileLoader, FileExporter fileExporter,
+    public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader,
         ApiGhostSetting apiGhostSetting) {
-        return new ScenarioTestExecutor(restTemplate, objectMapper, scenarioFileLoader,
-            fileExporter, apiGhostSetting);
+        return new FileLoaderEngine(fileLoader, apiGhostSetting);
     }
 
+    @Bean
+    public HttpExecutor httpExecutor(
+        @Qualifier("apighost-RestTemplate") RestTemplate restTemplate) {
+        return new HttpExecutor(restTemplate);
+    }
 
     @Bean
-    public FileExporter fileExporter(
-        @Qualifier("apighost-ObjectMapper") ObjectMapper objectMapper) {
-        return new FileExporter(objectMapper);
+    public ScenarioTestExecutor scenarioTestExecutor(ApiGhostSetting apiGhostSetting,
+        ApiGhostProperties apiGhostProperties, HttpExecutor httpExecutor) {
+        return new ScenarioTestExecutor(apiGhostSetting, apiGhostProperties, httpExecutor);
+    }
+
+    @Bean
+    public ScenarioTestOrchestrator scenarioTestOrchestrator(ScenarioFileLoader scenarioFileLoader,
+        ScenarioTestExecutor scenarioTestExecutor, FileExporter fileExporter,
+        ApiGhostSetting apiGhostSetting) {
+        return new ScenarioTestOrchestrator(scenarioFileLoader, scenarioTestExecutor, fileExporter,
+            apiGhostSetting);
     }
 }

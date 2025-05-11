@@ -5,6 +5,7 @@ import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.model.ScenarioResultBrief;
 import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.model.ScenarioListResponse;
+import com.apighost.agent.util.ObjectMapperHolder;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.parser.scenario.reader.JsonScenarioResultReader;
@@ -35,17 +36,10 @@ public class FileLoaderEngine {
     private final ApiGhostSetting apiGhostSetting;
     private static final Logger log = LoggerFactory.getLogger(FileLoaderEngine.class);
 
-    /**
-     * Constructs a new {@code FileLoaderEngine} with the specified dependencies.
-     *
-     * @param fileLoader   the file loader for accessing scenario and result files
-     * @param objectMapper the object mapper used to deserialize result files
-     */
-    public FileLoaderEngine(FileLoader fileLoader, ObjectMapper objectMapper,
-        ApiGhostSetting apiGhostSetting) {
+    public FileLoaderEngine(FileLoader fileLoader, ApiGhostSetting apiGhostSetting) {
         this.fileLoader = fileLoader;
-        this.objectMapper = objectMapper;
         this.apiGhostSetting = apiGhostSetting;
+        this.objectMapper = ObjectMapperHolder.getInstance();
     }
 
     public ScenarioListResponse getScenarioNames() {
