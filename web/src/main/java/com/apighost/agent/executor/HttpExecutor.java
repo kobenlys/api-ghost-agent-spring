@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -27,9 +28,9 @@ import org.springframework.web.client.RestTemplate;
 /**
  * Executes HTTP requests based on scenario definitions and collects response metadata.
  * <p>
- * This class utilizes a {@link RestTemplate} to perform HTTP exchanges, parses the responses,
- * and returns structured results including status code, headers, body, and execution duration.
- * It supports parsing of common JSON types as well as plain text responses.
+ * This class utilizes a {@link RestTemplate} to perform HTTP exchanges, parses the responses, and
+ * returns structured results including status code, headers, body, and execution duration. It
+ * supports parsing of common JSON types as well as plain text responses.
  * </p>
  *
  * @author kobenlys
@@ -68,17 +69,19 @@ public class HttpExecutor {
             );
 
             String responseBodyStr = response.result.getBody();
-            Map<String, Object> resBody = getParseBody(responseBodyStr);
+            Map<String, Object> resBody = responseBodyparser(responseBodyStr);
             HttpStatusCode httpStatus = HttpStatus.resolve(response.result.getStatusCode().value());
+            HttpHeaders responseHeaders = response.result.getHeaders();
 
-            Map<String, String> resHeader = new HashMap<>();
-            for (Entry<String, List<String>> entry : response.result.getHeaders().entrySet()) {
+            Map<String, List<String>> resHeader = new HashMap<>();
+            for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
                 if (!entry.getValue().isEmpty()) {
-                    resHeader.put(entry.getKey(), entry.getValue().get(0));
+                    resHeader.put(entry.getKey(), entry.getValue());
                 }
             }
 
-            return new ResponseResult.Builder().header(resHeader).body(resBody)
+            return new ResponseResult.Builder().header(responseHeaderParser(resHeader))
+                .body(resBody)
                 .httpStatus(httpStatus).httpMethod(request.getMethod())
                 .startTime(response.startTime).endTime(response.endTime)
                 .durationMs((int) response.durationTime).build();
@@ -97,7 +100,7 @@ public class HttpExecutor {
      * @return a parsed body as a map
      * @throws JsonProcessingException if the input is a malformed JSON string
      */
-    private Map<String, Object> getParseBody(String responseBodyStr)
+    private Map<String, Object> responseBodyparser(String responseBodyStr)
         throws JsonProcessingException {
         Map<String, Object> resBody;
 
@@ -125,6 +128,14 @@ public class HttpExecutor {
             }
         }
         return resBody;
+    }
+
+    private Map<String, String> responseHeaderParser(Map<String, List<String>> httpResponseHeader) {
+        return httpResponseHeader.entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> String.join(", ", entry.getValue())
+            ));
     }
 
     /**
