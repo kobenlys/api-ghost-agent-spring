@@ -147,7 +147,7 @@ public class EngineController {
                 apiGhostSetting.getScenarioPath()));
     }
 
-    @PostMapping("/generate-body")
+    @PostMapping("/generate-data")
     public ResponseEntity<List<GeneratedData>> generateData(@RequestBody List<FieldMeta> fieldMetaList) {
         return ResponseEntity.ok(
             dataGenerationOrchestrator.executeGenerate(fieldMetaList,
