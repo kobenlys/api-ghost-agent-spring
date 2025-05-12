@@ -1,5 +1,6 @@
 package com.apighost.agent.controller;
 
+import com.apighost.agent.config.ApiGhostProperties;
 import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.file.FileExporter;
@@ -9,7 +10,11 @@ import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.notifier.ResultSseNotifier;
 import com.apighost.agent.notifier.ScenarioResultNotifier;
 import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
+import com.apighost.model.GeneratedData;
+import com.apighost.model.collector.FieldMeta;
 import com.apighost.model.scenario.Scenario;
+import com.apighost.orchestrator.DataGenerationOrchestrator;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,25 +43,32 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class EngineController {
 
     private final ScenarioTestOrchestrator scenarioTestOrchestrator;
+    private final DataGenerationOrchestrator dataGenerationOrchestrator;
     private final FileLoaderEngine fileLoaderEngine;
     private final FileExporter fileExporter;
+    private final ApiGhostProperties apiGhostProperties;
     private final ApiGhostSetting apiGhostSetting;
 
-
     public EngineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
+        DataGenerationOrchestrator dataGenerationOrchestrator,
         FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
-        ApiGhostSetting apiGhostSetting) {
+        ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties) {
+
         this.scenarioTestOrchestrator = scenarioTestOrchestrator;
+        this.dataGenerationOrchestrator = dataGenerationOrchestrator;
         this.fileLoaderEngine = fileLoaderEngine;
         this.fileExporter = fileExporter;
         this.apiGhostSetting = apiGhostSetting;
+        this.apiGhostProperties = apiGhostProperties;
     }
 
     /**
-     * Executes a scenario test and streams real-time results to the client using Server-Sent Events (SSE).
+     * Executes a scenario test and streams real-time results to the client using Server-Sent Events
+     * (SSE).
      * <p>
-     * This endpoint initializes an {@link SseEmitter} to asynchronously send updates about the scenario execution.
-     * Events are sent as the test progresses, and include step results and a completion signal.
+     * This endpoint initializes an {@link SseEmitter} to asynchronously send updates about the
+     * scenario execution. Events are sent as the test progresses, and include step results and a
+     * completion signal.
      * </p>
      *
      * @param scenarioName the name of the scenario to be executed (without file extension)
@@ -134,4 +146,12 @@ public class EngineController {
             fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
                 apiGhostSetting.getScenarioPath()));
     }
+
+    @PostMapping("/generate-data")
+    public ResponseEntity<List<GeneratedData>> generateData(@RequestBody List<FieldMeta> fieldMetaList) {
+        return ResponseEntity.ok(
+            dataGenerationOrchestrator.executeGenerate(fieldMetaList,
+                apiGhostProperties.getOpenAiKey()));
+    }
+
 }

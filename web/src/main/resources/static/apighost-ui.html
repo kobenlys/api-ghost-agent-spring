@@ -37,7 +37,7 @@
 
 <script>
     function startScenario() {
-        const scenarioName = "mock-test";
+        const scenarioName = "mock-test.yaml";
         const eventSource = new EventSource(`/apighost/scenario-test?scenarioName=${scenarioName}`);
         const output = document.getElementById("output");
         output.textContent = "";

@@ -14,7 +14,7 @@ public class ScenarioFileLoader {
 
         Path rootPath = Paths.get("").toAbsolutePath();
 
-        Path targetFile = rootPath.resolve("apighost").resolve(scenarioFileName + ".yaml");
+        Path targetFile = rootPath.resolve("apighost").resolve(scenarioFileName);
         File yamlFile = targetFile.toFile();
 
         if (yamlFile.isFile()) {

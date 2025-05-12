@@ -11,6 +11,7 @@ import com.apighost.agent.file.FileExporter;
 import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.file.ScenarioFileLoader;
 import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
+import com.apighost.orchestrator.OpenAiGenerateOrchestrator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,10 +58,12 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public EngineController engineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
+        OpenAiGenerateOrchestrator openAiGenerateOrchestrator,
         FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
-        ApiGhostSetting apiGhostSetting) {
-        return new EngineController(scenarioTestOrchestrator, fileLoaderEngine, fileExporter,
-            apiGhostSetting);
+        ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties) {
+        return new EngineController(scenarioTestOrchestrator, openAiGenerateOrchestrator,
+            fileLoaderEngine, fileExporter,
+            apiGhostSetting, apiGhostProperties);
     }
 
     @Bean
@@ -120,5 +123,10 @@ public class ApiGhostWebAutoConfiguration {
         ApiGhostSetting apiGhostSetting) {
         return new ScenarioTestOrchestrator(scenarioFileLoader, scenarioTestExecutor, fileExporter,
             apiGhostSetting);
+    }
+
+    @Bean
+    OpenAiGenerateOrchestrator openAiGenerateOrchestrator() {
+        return new OpenAiGenerateOrchestrator();
     }
 }
