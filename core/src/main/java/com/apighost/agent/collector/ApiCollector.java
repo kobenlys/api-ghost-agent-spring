@@ -368,7 +368,7 @@ public class ApiCollector {
                 || paramAnnotations.containsName(
                 "org.springframework.web.bind.annotation.ModelAttribute")) {
 
-                String typeName = paramInfo.getTypeDescriptor().toString();
+                String typeName = paramInfo.getTypeDescriptor().toStringWithSimpleNames();
 
                 try {
                     Class<?> paramClass = loadClass(typeName);
