@@ -2,6 +2,7 @@ package com.apighost.agent.engine;
 
 import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.file.FileLoader;
+import com.apighost.agent.model.GenericFileDetailResponse;
 import com.apighost.agent.model.ScenarioResultBrief;
 import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.model.ScenarioListResponse;
@@ -85,19 +86,21 @@ public class FileLoaderEngine {
      * </p>
      *
      * @param scenarioName the name of the scenario file to load (e.g., "login.yml")
-     * @return the parsed {@link Scenario} object
+     * @return the parsed {@link GenericFileDetailResponse} object
      * @throws IllegalArgumentException if the scenarioName is null, empty, or the file cannot be
      *                                  read
      */
-    public Scenario getScenarioInfo(String scenarioName) {
+    public GenericFileDetailResponse getScenarioInfo(String scenarioName) {
         YamlScenarioReader yamlScenarioReader = new YamlScenarioReader();
         if (isEmptyOrNull(scenarioName)) {
             throw new IllegalArgumentException("scenarioName must not be null or empty");
         }
 
         try {
-            return yamlScenarioReader.readScenario(
+
+            Scenario scenario = yamlScenarioReader.readScenario(
                 apiGhostSetting.getScenarioPath() + "/" + scenarioName);
+            return new GenericFileDetailResponse(scenarioName, scenario);
         } catch (IOException e) {
             log.error("ScenarioFile Not Found: {}", e.getMessage());
             throw new IllegalArgumentException("ScenarioFile Not Founded : " + scenarioName);
@@ -113,11 +116,11 @@ public class FileLoaderEngine {
      * </p>
      *
      * @param resultName the name of the result file to load (e.g., "login-result.json")
-     * @return the parsed {@link ScenarioResult} object
+     * @return the parsed {@link GenericFileDetailResponse} object
      * @throws IllegalArgumentException if the resultName is null, empty, or the file cannot be
      *                                  read
      */
-    public ScenarioResult getTestResultInfo(String resultName) {
+    public GenericFileDetailResponse getTestResultInfo(String resultName) {
         JsonScenarioResultReader jsonScenarioResultReader = new JsonScenarioResultReader();
         if (isEmptyOrNull(resultName)) {
             throw new IllegalArgumentException("resultName must not be null or empty");
@@ -128,8 +131,10 @@ public class FileLoaderEngine {
         }
 
         try {
-            return jsonScenarioResultReader.readScenarioResult(
+
+            ScenarioResult scenarioResult = jsonScenarioResultReader.readScenarioResult(
                 apiGhostSetting.getResultPath() + "/" + resultName);
+            return new GenericFileDetailResponse(resultName, scenarioResult);
         } catch (IOException e) {
             log.error("ResultFile Not Found: {}", e.getMessage());
             throw new IllegalArgumentException("ResultFile Not Founded : " + resultName);
