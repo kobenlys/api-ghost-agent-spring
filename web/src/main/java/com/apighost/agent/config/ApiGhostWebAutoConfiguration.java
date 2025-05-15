@@ -72,18 +72,6 @@ public class ApiGhostWebAutoConfiguration {
             apiGhostProperties.getBaseUrl());
     }
 
-    @Bean("apighost-RestTemplate")
-    public RestTemplate restTemplate() {
-        RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
-            @Override
-            public boolean hasError(ClientHttpResponse response) throws IOException {
-                return false;
-            }
-        });
-        return restTemplate;
-    }
-
     @Bean
     public ScenarioFileLoader scenarioFileLoader() {
         return new ScenarioFileLoader();
@@ -106,9 +94,8 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public HttpExecutor httpExecutor(
-        @Qualifier("apighost-RestTemplate") RestTemplate restTemplate) {
-        return new HttpExecutor(restTemplate);
+    public HttpExecutor httpExecutor() {
+        return new HttpExecutor();
     }
 
     @Bean
