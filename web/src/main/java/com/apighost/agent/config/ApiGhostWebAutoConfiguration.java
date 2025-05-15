@@ -6,23 +6,20 @@ import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.exception.GlobalExceptionHandler;
-import com.apighost.agent.executor.HttpExecutor;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.file.FileExporter;
 import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.file.ScenarioFileLoader;
 import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
 import com.apighost.orchestrator.OpenAiGenerateOrchestrator;
+import com.apighost.scenario.executor.HTTPStepExecutor;
+import com.apighost.scenario.executor.StepExecutor;
+import com.apighost.scenario.executor.WebSocketStepExecutor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.web.client.DefaultResponseErrorHandler;
-import org.springframework.web.client.RestTemplate;
-
-import java.io.IOException;
 
 @Configuration
 @PropertySource("classpath:apighost-settings.properties")
@@ -95,14 +92,21 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public HttpExecutor httpExecutor() {
-        return new HttpExecutor();
+    public ScenarioTestExecutor scenarioTestExecutor(
+        ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties,
+        @Qualifier("apighost-http-exe") StepExecutor http,
+        @Qualifier("apighost-websocket-exe") StepExecutor websocket) {
+        return new ScenarioTestExecutor(apiGhostSetting, apiGhostProperties, http, websocket);
     }
 
-    @Bean
-    public ScenarioTestExecutor scenarioTestExecutor(ApiGhostSetting apiGhostSetting,
-        ApiGhostProperties apiGhostProperties, HttpExecutor httpExecutor) {
-        return new ScenarioTestExecutor(apiGhostSetting, apiGhostProperties, httpExecutor);
+    @Bean("apighost-http-exe")
+    public StepExecutor HttpStepExecutor(){
+        return new HTTPStepExecutor();
+    }
+
+    @Bean("apighost-websocket-exe")
+    public StepExecutor WebStocketStepExecutor(){
+        return new WebSocketStepExecutor();
     }
 
     @Bean
