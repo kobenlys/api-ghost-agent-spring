@@ -5,6 +5,7 @@ import com.apighost.agent.controller.EndPointProvider;
 import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
+import com.apighost.agent.exception.GlobalExceptionHandler;
 import com.apighost.agent.executor.HttpExecutor;
 import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.agent.file.FileExporter;
@@ -128,5 +129,10 @@ public class ApiGhostWebAutoConfiguration {
     @Bean
     OpenAiGenerateOrchestrator openAiGenerateOrchestrator() {
         return new OpenAiGenerateOrchestrator();
+    }
+
+    @Bean
+    GlobalExceptionHandler globalExceptionHandler(){
+        return new GlobalExceptionHandler();
     }
 }
