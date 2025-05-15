@@ -9,6 +9,7 @@ import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.model.scenario.result.ResultStep;
 import com.apighost.model.scenario.result.ResultStep.Builder;
+import com.apighost.model.scenario.step.HTTPMethod;
 import com.apighost.model.scenario.step.ProtocolType;
 import com.apighost.model.scenario.step.Route;
 import com.apighost.model.scenario.step.Step;
@@ -24,10 +25,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.springframework.http.HttpStatus;
 
 /**
  * Executes scenario-based HTTP tests by reading and running steps defined in YAML files. Sends
@@ -38,7 +41,6 @@ import java.util.function.Consumer;
  */
 public class ScenarioTestExecutor {
 
-    private final ObjectMapper objectMapper;
     private final ApiGhostSetting apiGhostSetting;
     private final ApiGhostProperties apiGhostProperties;
     private final HttpExecutor httpExecutor;
@@ -49,11 +51,10 @@ public class ScenarioTestExecutor {
     public ScenarioTestExecutor(ApiGhostSetting apiGhostSetting,
         ApiGhostProperties apiGhostProperties, HttpExecutor httpExecutor) {
 
-        this.objectMapper = ObjectMapperHolder.getInstance();
         this.apiGhostSetting = apiGhostSetting;
         this.apiGhostProperties = apiGhostProperties;
         this.httpExecutor = httpExecutor;
-        this.flattener = new JsonFlattener(objectMapper);
+        this.flattener = new JsonFlattener(ObjectMapperHolder.getInstance());
     }
 
     /**
@@ -78,7 +79,7 @@ public class ScenarioTestExecutor {
         Map<String, Object> store = new HashMap<>();
 
         long totalDurationMs = 0;
-        int stepCount = 0;
+        long timeLimitMs = scenario.getTimeoutMs();
         boolean isTotalSuccess = true;
 
         log.info("Scenario Test Start - name: {}", scenario.getName());
@@ -86,22 +87,29 @@ public class ScenarioTestExecutor {
 
         while (true) {
             Step presentStep = scenario.getSteps().get(nowStepName);
-            ResponseResult responseResult = httpExecutor.httpProtocolExecutor(
-                presentStep.getRequest());
+            ResponseResult responseResult =
 
-            if (responseResult == null) {
+                switch (presentStep.getType()) {
+                    case HTTP -> httpExecutor.httpProtocolExecutor(presentStep.getRequest(), store,
+                        timeLimitMs);
+                    case WEBSOCKET ->
+                        throw new UnsupportedOperationException("WS not implemented yet");
+                };
+
+            if (responseResult.getHttpStatus() == HttpStatus.REQUEST_TIMEOUT) {
+                isTotalSuccess = false;
+                ResultStep resultStep = buildResultStep(nowStepName, presentStep, responseResult,
+                    null, null, "");
+                callback.accept(resultStep);
+                resultSteps.add(resultStep);
                 break;
             }
 
-            Map<String, Object> flatResponseBody;
-            String responseBodyStr = "";
-            try {
-                flatResponseBody = flattener.flatten(
-                    objectMapper.writeValueAsString(responseResult.getBody()));
-                responseBodyStr = objectMapper.writeValueAsString(responseResult.getBody());
-            } catch (JsonProcessingException e) {
-                isTotalSuccess = false;
-                break;
+            Map<String, String> flatResponseHeader = responseHeaderParser(
+                responseResult.getHeader().map());
+            Map<String, Object> flatResponseBody = null;
+            if ("application/json".equals(flatResponseHeader.get("Content-Type"))) {
+                flatResponseBody = flattener.flatten(responseResult.getBody());
             }
 
             Then matchedThen = matchsExpected(responseResult.getHttpStatus().value(),
@@ -109,23 +117,11 @@ public class ScenarioTestExecutor {
             String nextStep =
                 matchedThen == null ? null : executeThen(matchedThen, flatResponseBody, store);
 
-            ResultStep resultStep =
-                new Builder().stepName(nowStepName).type(ProtocolType.HTTP)
-                    .url(presentStep.getRequest().getUrl())
-                    .method(responseResult.getHttpMethod())
-                    .requestHeader(presentStep.getRequest().getHeader())
-                    .requestBody(presentStep.getRequest().getBody())
-                    .status(responseResult.getHttpStatus().value())
-                    .responseHeaders(responseResult.getHeader())
-                    .responseBody(responseBodyStr)
-                    .startTime(TimeUtils.convertFormat(responseResult.getStartTime()))
-                    .endTime(TimeUtils.convertFormat(responseResult.getEndTime()))
-                    .durationMs(responseResult.getDurationMs())
-                    .isRequestSuccess(matchedThen != null).route(presentStep.getRoute())
-                    .nextStep(nextStep).build();
+            ResultStep resultStep = buildResultStep(nowStepName, presentStep, responseResult,
+                flatResponseHeader, matchedThen, nextStep);
 
-            stepCount++;
             totalDurationMs += responseResult.getDurationMs();
+            timeLimitMs -= responseResult.getDurationMs();
             callback.accept(resultStep);
             resultSteps.add(resultStep);
 
@@ -135,15 +131,13 @@ public class ScenarioTestExecutor {
                 }
                 break;
             }
-
-            storedResponseValue(store, responseResult.getBody(), matchedThen);
             nowStepName = nextStep;
         }
 
         return new ScenarioResult.Builder().name(scenario.getName())
             .description(scenario.getDescription()).executedAt(TimeUtils.getNow())
             .totalDurationMs(totalDurationMs)
-            .averageDurationMs(stepCount == 0 ? 0 : totalDurationMs / stepCount)
+            .averageDurationMs(totalDurationMs / resultSteps.size())
             .filePath(apiGhostSetting.getResultPath()).baseUrl(apiGhostProperties.getBaseUrl())
             .isScenarioSuccess(isTotalSuccess).results(resultSteps).build();
     }
@@ -232,7 +226,7 @@ public class ScenarioTestExecutor {
             return true;
         }
 
-        for (Map.Entry<String, Object> entry : expectedValue.entrySet()) {
+        for (Entry<String, Object> entry : expectedValue.entrySet()) {
             if (!flatResponseBody.containsKey(entry.getKey())) {
                 return false;
             }
@@ -311,7 +305,7 @@ public class ScenarioTestExecutor {
             return;
         }
 
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
+        for (Entry<String, Object> entry : map.entrySet()) {
             if (!(entry.getValue() instanceof String originalValue)) {
                 continue;
             }
@@ -319,5 +313,32 @@ public class ScenarioTestExecutor {
             String convertedValue = TemplateConvertor.convert(originalValue, store);
             entry.setValue(convertedValue);
         }
+    }
+
+    private Map<String, String> responseHeaderParser(Map<String, List<String>> httpResponseHeader) {
+        return httpResponseHeader.entrySet().stream()
+            .collect(Collectors.toMap(
+                Entry::getKey,
+                entry -> String.join(", ", entry.getValue())
+            ));
+    }
+
+    private ResultStep buildResultStep(String nowStepName, Step presentStep,
+        ResponseResult responseResult, Map<String, String> flatResponseHeader, Then matchedThen,
+        String nextStep) {
+
+        return new Builder().stepName(nowStepName).type(presentStep.getType())
+            .url(presentStep.getRequest().getUrl())
+            .method(responseResult.getHttpMethod())
+            .requestHeader(presentStep.getRequest().getHeader())
+            .requestBody(presentStep.getRequest().getBody())
+            .status(responseResult.getHttpStatus().value())
+            .responseHeaders(flatResponseHeader)
+            .responseBody(responseResult.getBody())
+            .startTime(TimeUtils.convertFormat(responseResult.getStartTime()))
+            .endTime(TimeUtils.convertFormat(responseResult.getEndTime()))
+            .durationMs(responseResult.getDurationMs())
+            .isRequestSuccess(matchedThen != null).route(presentStep.getRoute())
+            .nextStep(nextStep).build();
     }
 }
