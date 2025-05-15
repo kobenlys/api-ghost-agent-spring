@@ -1,6 +1,7 @@
 package com.apighost.agent.model;
 
 import com.apighost.model.scenario.step.HTTPMethod;
+import java.net.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 
 import java.util.Date;
@@ -15,13 +16,13 @@ import java.util.Map;
  */
 public class ResponseResult {
 
-    private Map<String, Object> body;
+    private String body;
     private HttpStatusCode httpStatus;
     private HTTPMethod httpMethod;
-    private Map<String, String> header;
+    private HttpHeaders header;
     private long startTime;
     private long endTime;
-    private int durationMs;
+    private long durationMs;
 
     private ResponseResult(Builder builder) {
         this.body = builder.body;
@@ -35,15 +36,15 @@ public class ResponseResult {
 
     public static class Builder {
 
-        private Map<String, Object> body;
+        private String body;
         private HttpStatusCode httpStatus;
         private HTTPMethod httpMethod;
-        private Map<String, String> header;
+        private HttpHeaders header;
         private long startTime;
         private long endTime;
-        private int durationMs;
+        private long durationMs;
 
-        public Builder body(Map<String, Object> body) {
+        public Builder body(String body) {
             this.body = body;
             return this;
         }
@@ -58,7 +59,7 @@ public class ResponseResult {
             return this;
         }
 
-        public Builder header(Map<String, String> header) {
+        public Builder header(HttpHeaders header) {
             this.header = header;
             return this;
         }
@@ -73,7 +74,7 @@ public class ResponseResult {
             return this;
         }
 
-        public Builder durationMs(int durationMs) {
+        public Builder durationMs(long durationMs) {
             this.durationMs = durationMs;
             return this;
         }
@@ -83,7 +84,7 @@ public class ResponseResult {
         }
     }
 
-    public Map<String, Object> getBody() {
+    public String getBody() {
         return body;
     }
 
@@ -95,7 +96,7 @@ public class ResponseResult {
         return httpMethod;
     }
 
-    public Map<String, String> getHeader() {
+    public HttpHeaders getHeader() {
         return header;
     }
 
@@ -107,7 +108,7 @@ public class ResponseResult {
         return endTime;
     }
 
-    public int getDurationMs() {
+    public long getDurationMs() {
         return durationMs;
     }
 }

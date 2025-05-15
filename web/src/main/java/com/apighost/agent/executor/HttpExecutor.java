@@ -5,10 +5,17 @@ import com.apighost.agent.util.ExecutionTimer;
 import com.apighost.agent.util.HttpRequestBuilder;
 import com.apighost.agent.util.ObjectMapperHolder;
 import com.apighost.model.scenario.request.Request;
+import com.apighost.parser.template.TemplateConvertor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -38,14 +45,13 @@ import org.springframework.web.client.RestTemplate;
  */
 public class HttpExecutor {
 
-    private final RestTemplate restTemplate;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
     private final HttpRequestBuilder httpRequestBuilder;
     private final ObjectMapper objectMapper;
 
     private static final Logger log = LoggerFactory.getLogger(HttpExecutor.class);
 
-    public HttpExecutor(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public HttpExecutor() {
         this.httpRequestBuilder = HttpRequestBuilder.getInstance();
         this.objectMapper = ObjectMapperHolder.getInstance();
     }
@@ -56,86 +62,71 @@ public class HttpExecutor {
      * @param request the HTTP request definition in the scenario
      * @return a {@link ResponseResult} containing the status, headers, body, and duration
      */
-    public ResponseResult httpProtocolExecutor(Request request) {
+    public ResponseResult httpProtocolExecutor(Request request, Map<String, Object> store,
+        long timeoutMs) {
 
+        HttpRequest.Builder builder;
         try {
-            HttpEntity<?> httpEntity = httpRequestBuilder.build(request);
-            HttpMethod httpMethod = HttpMethod.valueOf(request.getMethod().name());
+            builder = HttpRequest.newBuilder().uri(URI.create(request.getUrl()))
+                .timeout(java.time.Duration.ofMillis(timeoutMs));
 
-            ExecutionTimer.DurationResult<ResponseEntity<String>> response = ExecutionTimer.execute(
-                () ->
-                    restTemplate.exchange(request.getUrl(), httpMethod, httpEntity,
-                        String.class)
-            );
-
-            String responseBodyStr = response.result.getBody();
-            Map<String, Object> resBody = responseBodyparser(responseBodyStr);
-            HttpStatusCode httpStatus = HttpStatus.resolve(response.result.getStatusCode().value());
-            HttpHeaders responseHeaders = response.result.getHeaders();
-
-            Map<String, List<String>> resHeader = new HashMap<>();
-            for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
-                if (!entry.getValue().isEmpty()) {
-                    resHeader.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            return new ResponseResult.Builder().header(responseHeaderParser(resHeader))
-                .body(resBody)
-                .httpStatus(httpStatus).httpMethod(request.getMethod())
-                .startTime(response.startTime).endTime(response.endTime)
-                .durationMs((int) response.durationTime).build();
-
-        } catch (JsonProcessingException e) {
-            log.error("Error - json parsing : {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
             return null;
         }
-    }
 
-    /**
-     * Parses a raw HTTP response body string into a {@code Map<String, Object>} representation.
-     * Supports JSON object, string, boolean, number, and handles plain text gracefully.
-     *
-     * @param responseBodyStr the raw HTTP response body as a string
-     * @return a parsed body as a map
-     * @throws JsonProcessingException if the input is a malformed JSON string
-     */
-    private Map<String, Object> responseBodyparser(String responseBodyStr)
-        throws JsonProcessingException {
-        Map<String, Object> resBody;
-
-        if (!isJson(responseBodyStr)) {
-            return Map.of("value", responseBodyStr);
+        if (request.getHeader() != null) {
+            convertMapStringTemplate(request.getHeader(), store);
+            request.getHeader().forEach(builder::header);
         }
 
-        if (responseBodyStr == null || responseBodyStr.trim().isEmpty()) {
-            resBody = Collections.emptyMap();
-        } else {
-
-            try {
-                JsonNode jsonNode = objectMapper.readTree(responseBodyStr);
-
-                return switch (jsonNode.getNodeType()) {
-                    case OBJECT -> objectMapper.readValue(responseBodyStr, new TypeReference<>() {
-                    });
-                    case BOOLEAN -> Map.of("value", jsonNode.asBoolean());
-                    case NUMBER -> Map.of("value", jsonNode.numberValue());
-                    case STRING -> Map.of("value", jsonNode.asText());
-                    default -> Collections.emptyMap();
-                };
-            } catch (JsonProcessingException e) {
-                return Map.of("value", responseBodyStr);
+        HttpRequest.BodyPublisher body = HttpRequest.BodyPublishers.noBody();
+        if (request.getBody() != null) {
+            if (request.getBody().getJson() != null) {
+                body = HttpRequest.BodyPublishers.ofString(
+                    TemplateConvertor.convert(request.getBody().getJson(), store));
             }
         }
-        return resBody;
-    }
 
-    private Map<String, String> responseHeaderParser(Map<String, List<String>> httpResponseHeader) {
-        return httpResponseHeader.entrySet().stream()
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> String.join(", ", entry.getValue())
-            ));
+        HttpRequest httpRequest;
+        switch (request.getMethod()) {
+            case GET -> httpRequest = builder.GET().build();
+            case POST -> httpRequest = builder.POST(body).build();
+            case PUT -> httpRequest = builder.PUT(body).build();
+            case DELETE, PATCH, HEAD, OPTIONS, TRACE, CONNECT ->
+                httpRequest = builder.method(request.getMethod().name(), body).build();
+            default -> throw new UnsupportedOperationException(
+                "Unknown method: " + request.getMethod());
+        }
+
+        ExecutionTimer.DurationResult<HttpResponse<String>> response = ExecutionTimer.execute(
+            () ->
+            {
+                try {
+                    return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+                }catch (HttpTimeoutException e){
+                    return null;
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        );
+
+        if (response.result == null) {
+            return new ResponseResult.Builder().header(null)
+                .body("")
+                .httpStatus(HttpStatus.REQUEST_TIMEOUT).httpMethod(request.getMethod())
+                .startTime(0).endTime(0)
+                .durationMs(0).build();
+        }
+
+        String responseBodyStr = response.result.body();
+        HttpStatusCode httpStatus = HttpStatus.resolve(response.result.statusCode());
+
+        return new ResponseResult.Builder().header(response.result.headers())
+            .body(responseBodyStr)
+            .httpStatus(httpStatus).httpMethod(request.getMethod())
+            .startTime(response.startTime).endTime(response.endTime)
+            .durationMs(response.durationTime).build();
     }
 
     /**
@@ -150,5 +141,17 @@ public class HttpExecutor {
         return (targetString.startsWith("{") && targetString.endsWith(
             "}")) || (targetString.startsWith("[") && targetString.endsWith(
             "]")) || targetString.equals("false") || targetString.equals("null");
+    }
+
+    private void convertMapStringTemplate(Map<String, String> map, Map<String, Object> store) {
+        if (map == null || map.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            String originalValue = entry.getValue();
+            String convertedValue = TemplateConvertor.convert(originalValue, store);
+            entry.setValue(convertedValue);
+        }
     }
 }
