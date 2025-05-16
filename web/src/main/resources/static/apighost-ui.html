@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>API Ghost UI</title>
+  <meta charset="UTF-8"/>
+  <title>API Ghost UI</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </head>
 <body>
 <h1>Welcome, API Ghost-UI</h1>
@@ -31,62 +33,112 @@
 ....................................................................................................
 </pre>
 
+<label for="scenarioInput">Scenario Name:</label>
+<input type="text" id="scenarioInput" placeholder="ex) scenario-test.yaml"/>
 <button onclick="startScenario()">🚀 scenario - test execute</button>
+
+<br/><br/>
+
+<label for="wsMessage">WebSocket Message:</label>
+<input type="text" id="wsMessage" placeholder="Message to send"/>
+<button onclick="sendWebSocketMessage()">📡 Send WebSocket Message</button>
 
 <pre id="output"></pre>
 
 <script>
-    function startScenario() {
-        const scenarioName = "mock-test.yaml";
-        const eventSource = new EventSource(`/apighost/scenario-test?scenarioName=${scenarioName}`);
-        const output = document.getElementById("output");
-        output.textContent = "";
+  const output = document.getElementById("output");
 
-        function log(message) {
-            console.log(message);
-            output.textContent += message + "\n";
-        }
+  function log(message) {
+    console.log(message);
+    output.textContent += message + "\n";
+  }
 
-        eventSource.addEventListener("stepResult", function (event) {
-            const data = JSON.parse(event.data);
-            log(`✅ Step: ${data.stepName}`);
-            log(`   - Type: ${data.type}`);
-            log(`   - Method: ${data.method}`);
-            log(`   - URL: ${data.url}`);
-            log(`   - Request Headers: ${JSON.stringify(data.requestHeader)}`);
-            const requestBody = data.requestBody?.json ?? "{}";
-            log(`   - Request Body: ${requestBody}`);
-            log(`   - Status: ${data.status}`);
-            log(`   - Response Headers: ${JSON.stringify(data.responseHeaders)}`);
-            log(`   - Response Body: ${data.responseBody}`);
-            log(`   - Start Time: ${data.startTime}`);
-            log(`   - End Time: ${data.endTime}`);
-            log(`   - Duration: ${data.durationMs}ms`);
-            log(`   - Success: ${data.isRequestSuccess}`);
-            log(`     `);
-        });
-
-        eventSource.addEventListener("complete", function (event) {
-            const result = JSON.parse(event.data);
-            log("🎉 Scenario Complete");
-            log(`   - Name: ${result.name}`);
-            log(`   - Description: ${result.description}`);
-            log(`   - Executed At: ${result.executedAt}`);
-            log(`   - Total Duration: ${result.totalDurationMs}ms`);
-            log(`   - Average Duration: ${result.averageDurationMs}ms`);
-            log(`   - File Path: ${result.filePath}`);
-            log(`   - Base URL: ${result.baseUrl}`);
-            log(`   - Success: ${result.isScenarioSuccess}`);
-            log(`   - Results: ${JSON.stringify(result.results)}`);
-            eventSource.close();
-        });
-
-        eventSource.error = function (e) {
-            log("❌ Error occurred or connection closed.");
-            eventSource.close();
-        };
+  function startScenario() {
+    const scenarioName = document.getElementById("scenarioInput").value.trim();
+    if (!scenarioName) {
+      alert("please enter file name");
+      return;
     }
-</script>
 
+    const eventSource = new EventSource(`/apighost/scenario-test?scenarioName=${encodeURIComponent(scenarioName)}`);
+    output.textContent = "";
+
+    eventSource.addEventListener("stepResult", function (event) {
+      const data = JSON.parse(event.data);
+      log(`✅ Step: ${data.stepName}`);
+      log(`   - Type: ${data.type}`);
+      log(`   - Method: ${data.method}`);
+      log(`   - URL: ${data.url}`);
+      log(`   - Request Headers: ${JSON.stringify(data.requestHeader)}`);
+      const requestBody = data.requestBody?.json ?? "{}";
+      log(`   - Request Body: ${requestBody}`);
+      log(`   - Status: ${data.status}`);
+      log(`   - Response Headers: ${JSON.stringify(data.responseHeaders)}`);
+      log(`   - Response Body: ${data.responseBody}`);
+      log(`   - Start Time: ${data.startTime}`);
+      log(`   - End Time: ${data.endTime}`);
+      log(`   - Duration: ${data.durationMs}ms`);
+      log(`   - Success: ${data.isRequestSuccess}`);
+      log(``);
+    });
+
+    eventSource.addEventListener("complete", function (event) {
+      const result = JSON.parse(event.data);
+      log("🎉 Scenario Complete");
+      log(`   - Name: ${result.name}`);
+      log(`   - Description: ${result.description}`);
+      log(`   - Executed At: ${result.executedAt}`);
+      log(`   - Total Duration: ${result.totalDurationMs}ms`);
+      log(`   - Average Duration: ${result.averageDurationMs}ms`);
+      log(`   - File Path: ${result.filePath}`);
+      log(`   - Base URL: ${result.baseUrl}`);
+      log(`   - Success: ${result.isScenarioSuccess}`);
+      log(`   - Results: ${JSON.stringify(result.results)}`);
+      eventSource.close();
+    });
+
+    eventSource.onerror = function () {
+      log("❌ Error occurred or connection closed.");
+      eventSource.close();
+    };
+  }
+
+  let websocket;
+
+  window.addEventListener("load", () => {
+    websocket = new WebSocket("ws://localhost:8080/ws");
+
+    websocket.onopen = function () {
+      log("🔌 WebSocket connected");
+    };
+
+    websocket.onmessage = function (event) {
+      log("📩 WebSocket Received: " + event.data);
+    };
+
+    websocket.onerror = function (error) {
+      log("❌ WebSocket error: " + JSON.stringify(error));
+    };
+
+    websocket.onclose = function () {
+      log("🔌 WebSocket connection closed");
+    };
+  });
+
+  function sendWebSocketMessage() {
+    const message = document.getElementById("wsMessage").value.trim();
+    if (!message) {
+      alert("please enter a message");
+      return;
+    }
+
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+      websocket.send(message);
+      log("📤 WebSocket Sent: " + message);
+    } else {
+      log("❌ WebSocket not connected");
+    }
+  }
+</script>
 </body>
 </html>
