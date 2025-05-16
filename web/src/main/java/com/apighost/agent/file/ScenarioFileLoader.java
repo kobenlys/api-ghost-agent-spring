@@ -5,9 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.springframework.stereotype.Component;
 
-@Component
 public class ScenarioFileLoader {
 
     public File findScenarioFile(String scenarioFileName) throws IOException {

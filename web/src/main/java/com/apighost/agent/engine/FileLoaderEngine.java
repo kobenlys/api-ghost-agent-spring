@@ -37,9 +37,9 @@ public class FileLoaderEngine {
     private final ApiGhostSetting apiGhostSetting;
     private static final Logger log = LoggerFactory.getLogger(FileLoaderEngine.class);
 
-    public FileLoaderEngine(FileLoader fileLoader, ApiGhostSetting apiGhostSetting) {
-        this.fileLoader = fileLoader;
+    public FileLoaderEngine(ApiGhostSetting apiGhostSetting) {
         this.apiGhostSetting = apiGhostSetting;
+        this.fileLoader = new FileLoader(apiGhostSetting);
         this.objectMapper = ObjectMapperHolder.getInstance();
     }
 

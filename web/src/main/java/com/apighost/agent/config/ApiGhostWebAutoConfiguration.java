@@ -7,8 +7,6 @@ import com.apighost.agent.controller.ScenarioGUIController;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.exception.GlobalExceptionHandler;
 import com.apighost.agent.executor.ScenarioTestExecutor;
-import com.apighost.agent.file.FileExporter;
-import com.apighost.agent.file.FileLoader;
 import com.apighost.agent.file.ScenarioFileLoader;
 import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
 import com.apighost.orchestrator.OpenAiGenerateOrchestrator;
@@ -56,12 +54,10 @@ public class ApiGhostWebAutoConfiguration {
 
     @Bean
     public EngineController engineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
-        OpenAiGenerateOrchestrator openAiGenerateOrchestrator,
-        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
+        OpenAiGenerateOrchestrator openAiGenerateOrchestrator, FileLoaderEngine fileLoaderEngine,
         ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties) {
         return new EngineController(scenarioTestOrchestrator, openAiGenerateOrchestrator,
-            fileLoaderEngine, fileExporter,
-            apiGhostSetting, apiGhostProperties);
+            fileLoaderEngine,apiGhostSetting, apiGhostProperties);
     }
 
     @Bean
@@ -76,44 +72,31 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public FileLoader fileFinder(ApiGhostSetting apiGhostSetting) {
-        return new FileLoader(apiGhostSetting);
+    public FileLoaderEngine fileLoaderEngine(ApiGhostSetting apiGhostSetting) {
+        return new FileLoaderEngine(apiGhostSetting);
     }
 
     @Bean
-    FileExporter fileExporter() {
-        return new FileExporter();
-    }
-
-    @Bean
-    public FileLoaderEngine fileLoaderEngine(FileLoader fileLoader,
-        ApiGhostSetting apiGhostSetting) {
-        return new FileLoaderEngine(fileLoader, apiGhostSetting);
-    }
-
-    @Bean
-    public ScenarioTestExecutor scenarioTestExecutor(
-        ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties,
-        @Qualifier("apighost-http-exe") StepExecutor http,
+    public ScenarioTestExecutor scenarioTestExecutor(ApiGhostSetting apiGhostSetting,
+        ApiGhostProperties apiGhostProperties, @Qualifier("apighost-http-exe") StepExecutor http,
         @Qualifier("apighost-websocket-exe") StepExecutor websocket) {
         return new ScenarioTestExecutor(apiGhostSetting, apiGhostProperties, http, websocket);
     }
 
     @Bean("apighost-http-exe")
-    public StepExecutor HttpStepExecutor(){
+    public StepExecutor HttpStepExecutor() {
         return new HTTPStepExecutor();
     }
 
     @Bean("apighost-websocket-exe")
-    public StepExecutor WebStocketStepExecutor(){
+    public StepExecutor WebStocketStepExecutor() {
         return new WebSocketStepExecutor();
     }
 
     @Bean
     public ScenarioTestOrchestrator scenarioTestOrchestrator(ScenarioFileLoader scenarioFileLoader,
-        ScenarioTestExecutor scenarioTestExecutor, FileExporter fileExporter,
-        ApiGhostSetting apiGhostSetting) {
-        return new ScenarioTestOrchestrator(scenarioFileLoader, scenarioTestExecutor, fileExporter,
+        ScenarioTestExecutor scenarioTestExecutor, ApiGhostSetting apiGhostSetting) {
+        return new ScenarioTestOrchestrator(scenarioFileLoader, scenarioTestExecutor,
             apiGhostSetting);
     }
 
@@ -123,7 +106,7 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    GlobalExceptionHandler globalExceptionHandler(){
+    GlobalExceptionHandler globalExceptionHandler() {
         return new GlobalExceptionHandler();
     }
 }

@@ -21,12 +21,11 @@ public class ScenarioTestOrchestrator {
     private final ObjectMapper yamlObjectMapper;
 
     public ScenarioTestOrchestrator(ScenarioFileLoader scenarioFileLoader,
-        ScenarioTestExecutor scenarioTestExecutor, FileExporter fileExporter,
-        ApiGhostSetting apiGhostSetting) {
+        ScenarioTestExecutor scenarioTestExecutor, ApiGhostSetting apiGhostSetting) {
 
         this.scenarioFileLoader = scenarioFileLoader;
         this.scenarioTestExecutor = scenarioTestExecutor;
-        this.fileExporter = fileExporter;
+        this.fileExporter = new FileExporter();
         this.setting = apiGhostSetting;
         this.yamlObjectMapper = YamlMapperHolder.getInstance();
     }
