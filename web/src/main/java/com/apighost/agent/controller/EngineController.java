@@ -4,6 +4,7 @@ import com.apighost.agent.config.ApiGhostProperties;
 import com.apighost.agent.config.ApiGhostSetting;
 import com.apighost.agent.engine.FileLoaderEngine;
 import com.apighost.agent.file.FileExporter;
+import com.apighost.agent.file.FileRemover;
 import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.agent.model.ScenarioListResponse;
 import com.apighost.agent.model.ScenarioResultListResponse;
@@ -14,14 +15,11 @@ import com.apighost.model.GeneratedData;
 import com.apighost.model.collector.FieldMeta;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.orchestrator.DataGenerationOrchestrator;
+
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
@@ -45,19 +43,16 @@ public class EngineController {
     private final ScenarioTestOrchestrator scenarioTestOrchestrator;
     private final DataGenerationOrchestrator dataGenerationOrchestrator;
     private final FileLoaderEngine fileLoaderEngine;
-    private final FileExporter fileExporter;
     private final ApiGhostProperties apiGhostProperties;
     private final ApiGhostSetting apiGhostSetting;
 
     public EngineController(ScenarioTestOrchestrator scenarioTestOrchestrator,
-        DataGenerationOrchestrator dataGenerationOrchestrator,
-        FileLoaderEngine fileLoaderEngine, FileExporter fileExporter,
+        DataGenerationOrchestrator dataGenerationOrchestrator, FileLoaderEngine fileLoaderEngine,
         ApiGhostSetting apiGhostSetting, ApiGhostProperties apiGhostProperties) {
 
         this.scenarioTestOrchestrator = scenarioTestOrchestrator;
         this.dataGenerationOrchestrator = dataGenerationOrchestrator;
         this.fileLoaderEngine = fileLoaderEngine;
-        this.fileExporter = fileExporter;
         this.apiGhostSetting = apiGhostSetting;
         this.apiGhostProperties = apiGhostProperties;
     }
@@ -142,16 +137,37 @@ public class EngineController {
     @PostMapping("/scenario-export")
     public ResponseEntity<ScenarioExportResponse> exportScenarioFile(
         @RequestBody Scenario scenario) {
+        FileExporter fileExporter = new FileExporter();
         return ResponseEntity.ok(
             fileExporter.safeExportFile(scenario, apiGhostSetting.getFormatYaml(),
                 apiGhostSetting.getScenarioPath()));
     }
 
+    /**
+     * Generates data based on the provided list of field metadata.
+     *
+     * @param fieldMetaList the list of {@link FieldMeta} objects describing the fields for data
+     *                      generation
+     * @return {@link ResponseEntity} containing a list of {@link GeneratedData} objects generated
+     */
     @PostMapping("/generate-data")
-    public ResponseEntity<List<GeneratedData>> generateData(@RequestBody List<FieldMeta> fieldMetaList) {
-        return ResponseEntity.ok(
-            dataGenerationOrchestrator.executeGenerate(fieldMetaList,
-                apiGhostProperties.getOpenAiKey()));
+    public ResponseEntity<List<GeneratedData>> generateData(
+        @RequestBody List<FieldMeta> fieldMetaList) {
+        return ResponseEntity.ok(dataGenerationOrchestrator.executeGenerate(fieldMetaList,
+            apiGhostProperties.getOpenAiKey()));
     }
 
+    /**
+     * Deletes a file with the specified file name under the apighost directory.
+     *
+     * @param fileName the name of the file to be deleted, including extension (e.g.
+     *                 "example.yaml")
+     * @return {@link ResponseEntity} containing {@code true} if the file was deleted successfully,
+     * or {@code false} if deletion failed or the file does not exist
+     */
+    @DeleteMapping("/file-remove/{fileName:.+}")
+    public ResponseEntity<Boolean> removeFile(@PathVariable("fileName") String fileName) {
+        FileRemover fileRemover = new FileRemover(apiGhostSetting);
+        return ResponseEntity.ok(fileRemover.remove(fileName));
+    }
 }
