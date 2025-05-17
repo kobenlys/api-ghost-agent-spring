@@ -1,5 +1,6 @@
 package com.apighost.agent.collector;
 
+import com.apighost.agent.collector.converter.EndpointJsonBodyConverter;
 import com.apighost.model.collector.Endpoint;
 import com.apighost.model.collector.FieldMeta;
 import com.apighost.model.collector.Parameter;
@@ -48,6 +49,7 @@ public class ApiCollector {
     private final String basePackage;
     private final String baseUrl;
     private final List<Endpoint> endPointList = new ArrayList<>();
+    private final EndpointJsonBodyConverter endpointJsonBodyConverter;
     private ClassLoader classLoader;
 
     /**
@@ -59,6 +61,7 @@ public class ApiCollector {
     public ApiCollector(String basePackage, String baseUrl) {
         this.basePackage = basePackage;
         this.baseUrl = baseUrl;
+        this.endpointJsonBodyConverter = EndpointJsonBodyConverter.getInstance();
     }
 
     /**
@@ -212,12 +215,12 @@ public class ApiCollector {
             .path(fullPath)
             .produces(produces)
             .consumes(consumes)
-            .requestSchema(requestSchema)
-            .responseSchema(responseSchema)
-            .headers(headers)
-            .cookies(cookies)
-            .requestParams(requestParams)
-            .pathVariables(pathVariables)
+            .requestSchema(endpointJsonBodyConverter.createJsonBodyFromEndpoint(requestSchema))
+            .responseSchema(endpointJsonBodyConverter.createJsonBodyFromEndpoint(responseSchema))
+            .headers(endpointJsonBodyConverter.convertParamsToJson(headers))
+            .cookies(endpointJsonBodyConverter.convertParamsToJson(cookies))
+            .requestParams(endpointJsonBodyConverter.convertParamsToJson(requestParams))
+            .pathVariables(endpointJsonBodyConverter.convertParamsToJson(pathVariables))
             .build();
     }
 
