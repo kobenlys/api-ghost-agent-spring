@@ -11,12 +11,9 @@ import com.apighost.agent.model.ScenarioResultListResponse;
 import com.apighost.agent.notifier.ResultSseNotifier;
 import com.apighost.agent.notifier.ScenarioResultNotifier;
 import com.apighost.agent.orchestrator.ScenarioTestOrchestrator;
-import com.apighost.model.GeneratedData;
-import com.apighost.model.collector.FieldMeta;
+import com.apighost.model.GenerateBody;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.orchestrator.DataGenerationOrchestrator;
-
-import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -143,18 +140,12 @@ public class EngineController {
                 apiGhostSetting.getScenarioPath()));
     }
 
-    /**
-     * Generates data based on the provided list of field metadata.
-     *
-     * @param fieldMetaList the list of {@link FieldMeta} objects describing the fields for data
-     *                      generation
-     * @return {@link ResponseEntity} containing a list of {@link GeneratedData} objects generated
-     */
+
     @PostMapping("/generate-data")
-    public ResponseEntity<List<GeneratedData>> generateData(
-        @RequestBody List<FieldMeta> fieldMetaList) {
-        return ResponseEntity.ok(dataGenerationOrchestrator.executeGenerate(fieldMetaList,
-            apiGhostProperties.getOpenAiKey()));
+    public ResponseEntity<GenerateBody> generateData(@RequestBody GenerateBody generateBody) {
+        return ResponseEntity.ok(
+            dataGenerationOrchestrator.executeGenerate(generateBody.getJsonBody(),
+                apiGhostProperties.getOpenAiKey()));
     }
 
     /**
