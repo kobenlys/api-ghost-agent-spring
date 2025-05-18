@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * {@link ScenarioResultNotifier} implementation that sends scenario execution updates
- * to the client using Server-Sent Events (SSE).
+ * {@link ScenarioResultNotifier} implementation that sends scenario execution updates to the client
+ * using Server-Sent Events (SSE).
  * <p>
  * This class is responsible for streaming step-by-step results and final scenario completion
  * results to the connected client through an {@link SseEmitter}.
@@ -53,6 +53,7 @@ public class ResultSseNotifier implements ScenarioResultNotifier {
             sseEmitter.send(SseEmitter.event().name("stepResult").data(step));
         } catch (IOException e) {
             log.warn("Failed to SSE stepResult connection");
+            sseEmitter.completeWithError(e);
         }
     }
 
@@ -70,6 +71,7 @@ public class ResultSseNotifier implements ScenarioResultNotifier {
             sseEmitter.complete();
         } catch (IOException e) {
             log.warn("Failed to SSE complete connection");
+            sseEmitter.completeWithError(e);
         }
     }
 }
