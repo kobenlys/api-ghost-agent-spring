@@ -187,6 +187,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, WebRequest request) {
+        String contentType = request.getHeader("Accept");
+        if (contentType.contains("text/event-stream")) {
+            return null;
+        }
+
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
