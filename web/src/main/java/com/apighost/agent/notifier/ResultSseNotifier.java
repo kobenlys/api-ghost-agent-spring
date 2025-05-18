@@ -1,13 +1,16 @@
 package com.apighost.agent.notifier;
 
+import com.apighost.agent.executor.ScenarioTestExecutor;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.model.scenario.result.ResultStep;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * {@link ScenarioResultNotifier} implementation that sends scenario execution updates
- * to the client using Server-Sent Events (SSE).
+ * {@link ScenarioResultNotifier} implementation that sends scenario execution updates to the client
+ * using Server-Sent Events (SSE).
  * <p>
  * This class is responsible for streaming step-by-step results and final scenario completion
  * results to the connected client through an {@link SseEmitter}.
@@ -26,6 +29,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class ResultSseNotifier implements ScenarioResultNotifier {
 
     private final SseEmitter sseEmitter;
+    private static final Logger log = LoggerFactory.getLogger(ResultSseNotifier.class);
 
     /**
      * Constructs a new {@code ResultSseNotifier} with the given {@link SseEmitter}.
@@ -48,7 +52,8 @@ public class ResultSseNotifier implements ScenarioResultNotifier {
         try {
             sseEmitter.send(SseEmitter.event().name("stepResult").data(step));
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to SSE Connection");
+            log.warn("Failed to SSE stepResult connection");
+            sseEmitter.completeWithError(e);
         }
     }
 
@@ -63,8 +68,10 @@ public class ResultSseNotifier implements ScenarioResultNotifier {
 
         try {
             sseEmitter.send(SseEmitter.event().name("complete").data(result));
+            sseEmitter.complete();
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to SSE Connection");
+            log.warn("Failed to SSE complete connection");
+            sseEmitter.completeWithError(e);
         }
     }
 }
