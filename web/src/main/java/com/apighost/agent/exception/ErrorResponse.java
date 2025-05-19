@@ -1,6 +1,6 @@
 package com.apighost.agent.exception;
 
-import com.apighost.agent.util.TimeUtils;
+import com.apighost.util.file.TimeUtils;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 /**
  * Represents a standardized error response for exceptions in the application.

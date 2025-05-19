@@ -2,6 +2,7 @@ package com.apighost.agent.file;
 
 import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.agent.util.ObjectMapperHolder;
+import com.apighost.agent.util.YamlMapperHolder;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
 import com.apighost.util.file.TimeUtils;
@@ -24,15 +25,17 @@ import java.io.IOException;
  */
 public class FileExporter {
 
-    private final ObjectMapper objectMapper;
-
+    private ObjectMapper jsonMapper;
+    private ObjectMapper yamlMapper;
     /**
      * Constructs a {@code FileExporter} with a configured {@link ObjectMapper}. Enables
      * pretty-printing for output files.
      */
     public FileExporter() {
-        this.objectMapper = ObjectMapperHolder.getInstance();
-        this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        this.yamlMapper = YamlMapperHolder.getInstance();
+        this.yamlMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        this.jsonMapper = ObjectMapperHolder.getInstance();
+        this.jsonMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
     /**
@@ -65,7 +68,7 @@ public class FileExporter {
             String scenarioName = scenario.getName();
             exportPath = exportPath + "/" + scenarioName + fileType;
 
-            if (!exportFileExecutor(scenario, exportPath)) {
+            if (!exportFileExecutor(scenario, exportPath, fileType)) {
                 throw new IllegalArgumentException("Failed Scenario export :" + exportPath);
             }
 
@@ -80,7 +83,7 @@ public class FileExporter {
 
             exportPath = exportPath + "/" + scenarioName + "_" + safeTimestamp + fileType;
 
-            if (!exportFileExecutor(scenarioResult, exportPath)) {
+            if (!exportFileExecutor(scenarioResult, exportPath, fileType)) {
                 throw new IllegalArgumentException("Failed ScenarioResult export :" + exportPath);
             }
 
@@ -111,13 +114,21 @@ public class FileExporter {
         return targetString == null || targetString.isEmpty();
     }
 
-    private boolean exportFileExecutor(Object object, String exportPath) {
+    private boolean exportFileExecutor(Object object, String exportPath, String fileType) {
         try {
-            objectMapper.writeValue(new File(exportPath), object);
+            ObjectMapper mapper = getMapperByFileType(fileType);
+            mapper.writeValue(new File(exportPath), object);
             return true;
         } catch (IOException e) {
             return false;
         }
     }
 
+    private ObjectMapper getMapperByFileType(String fileType) {
+        if (fileType.equalsIgnoreCase(".yaml") || fileType.equalsIgnoreCase(".yml")) {
+            return yamlMapper;
+        } else {
+            return jsonMapper;
+        }
+    }
 }
