@@ -59,7 +59,11 @@ public class WebSocketCollector implements Collector {
             brokerDestinationPrefix = configInfo.brokerPrefix;
             stompEndpoint = configInfo.stompEndpoint;
 
-            addConnectionEndpoints();
+            if (!appDestinationPrefix.isEmpty() &&
+                !brokerDestinationPrefix.isEmpty() &&
+                !stompEndpoint.isEmpty()) {
+                addConnectionEndpoints();
+            }
 
             for (ClassInfo classInfo : scanResult.getClassesWithAnnotation(
                 "org.springframework.stereotype.Controller")) {
