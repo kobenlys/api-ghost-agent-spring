@@ -37,7 +37,7 @@ public class WebSocketAnalyzerUtil {
         }
 
         // default fallback
-        return new WebSocketConfigInfo("/app", "/topic", "/ws");
+        return new WebSocketConfigInfo("","","");
     }
 
     private static WebSocketConfigInfo extractConfigFromJavaFile(File javaFile) throws IOException {
@@ -46,9 +46,9 @@ public class WebSocketAnalyzerUtil {
             .orElseThrow(() -> new RuntimeException(
                 "Failed to parse Java file: " + javaFile.getAbsolutePath()));
 
-        String appPrefix = "/app";
-        String brokerPrefix = "/topic";
-        String stompEndpoint = "/ws";
+        String appPrefix = "";
+        String brokerPrefix = "";
+        String stompEndpoint = "";
 
         for (MethodDeclaration method : cu.findAll(MethodDeclaration.class)) {
             if (method.getNameAsString().equals("configureMessageBroker")) {
