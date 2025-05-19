@@ -92,7 +92,7 @@ public class RestApiCollector implements Collector {
                     "org.springframework.web.bind.annotation.RequestMapping");
 
                 if (classRequestMapping != null) {
-                    classPath = EndpointUtil.extractPath(classRequestMapping);
+                    classPath = EndpointUtil.extractPath(classRequestMapping, "value", "path");
                     classProduces = EndpointUtil.extractStringArray(classRequestMapping,
                         "produces");
                     classConsumes = EndpointUtil.extractStringArray(classRequestMapping,
@@ -157,10 +157,12 @@ public class RestApiCollector implements Collector {
             }
         }
 
-        if (httpMethod == null || path.isEmpty()) {
+        if (httpMethod == null) {
             return null;
         }
-        String fullPath = classPath + EndpointUtil.formatPath(path);
+        String combinedPath = path.isEmpty() ? classPath : (classPath.isEmpty() ? path : classPath + path);
+        String fullPath = EndpointUtil.formatPath(combinedPath);
+
         List<FieldMeta> responseSchema = extractResponseDtoSchema(methodInfo);
         List<FieldMeta> requestSchema = extractRequestDtoSchema(methodInfo, httpMethod);
         List<Parameter> headers = EndpointUtil.extractParameters(methodInfo,

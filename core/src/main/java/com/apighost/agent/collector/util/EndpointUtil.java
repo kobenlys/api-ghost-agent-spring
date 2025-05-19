@@ -33,18 +33,20 @@ public class EndpointUtil {
         if (annotationInfo == null) {
             return "";
         }
-        return Arrays.stream(pathKeys)
-            .map(key -> annotationInfo.getParameterValues().getValue(key))
-            .filter(Objects::nonNull)
-            .map(value -> {
+        for (String key : pathKeys) {
+            Object value = annotationInfo.getParameterValues().getValue(key);
+            if (value != null) {
                 if (value instanceof String[]) {
                     String[] array = (String[]) value;
-                    return array.length > 0 ? array[0] : "";
+                    if (array.length > 0) {
+                        return array[0];
+                    }
+                } else if (value instanceof String) {
+                    return (String) value;
                 }
-                return value.toString();
-            })
-            .findFirst()
-            .orElse("");
+            }
+        }
+        return "";
     }
 
     /**
