@@ -26,6 +26,8 @@ dependencies {
 
     implementation files('../libs/model-1.0-SNAPSHOT.jar')
 
+    implementation 'com.github.javaparser:javaparser-core:3.25.7'
+
     // ClassGraph
     implementation "io.github.classgraph:classgraph:4.8.112"
 

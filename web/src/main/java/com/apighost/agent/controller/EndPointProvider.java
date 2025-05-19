@@ -1,6 +1,10 @@
 package com.apighost.agent.controller;
 
-import com.apighost.agent.collector.ApiCollector;
+import com.apighost.agent.collector.RestApiCollector;
+import com.apighost.agent.collector.WebSocketCollector;
+import com.apighost.model.collector.Endpoint;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,16 +23,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/apighost")
 public class EndPointProvider {
 
-    private final ApiCollector apiCollector;
-
+    private final RestApiCollector restApiCollector;
+    private final WebSocketCollector webSocketCollector;
     /**
      * Initializes the {@code EndPointProvider} and triggers API endpoint scanning.
      *
-     * @param apiCollector the collector responsible for scanning available API endpoints
+     * @param restApiCollector the collector responsible for scanning available API endpoints
      */
-    public EndPointProvider(ApiCollector apiCollector) {
-        this.apiCollector = apiCollector;
-        this.apiCollector.scan();
+    public EndPointProvider(RestApiCollector restApiCollector, WebSocketCollector webSocketCollector) {
+        this.restApiCollector = restApiCollector;
+        this.restApiCollector.scan();
+        this.webSocketCollector = webSocketCollector;
+        this.webSocketCollector.scan();
     }
 
     /**
@@ -38,6 +44,9 @@ public class EndPointProvider {
      */
     @GetMapping("/endpoint-json")
     public ResponseEntity<?> getEndPoints() {
-        return ResponseEntity.ok(apiCollector.getEndPointList());
+        List<Endpoint> endpointList = new ArrayList<>(restApiCollector.getEndpointList());
+        endpointList.addAll(webSocketCollector.getEndpointList());
+        return ResponseEntity.ok(endpointList);
     }
+
 }

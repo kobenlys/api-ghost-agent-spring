@@ -1,6 +1,7 @@
 package com.apighost.agent.config;
 
-import com.apighost.agent.collector.ApiCollector;
+import com.apighost.agent.collector.RestApiCollector;
+import com.apighost.agent.collector.WebSocketCollector;
 import com.apighost.agent.controller.EndPointProvider;
 import com.apighost.agent.controller.EngineController;
 import com.apighost.agent.controller.ScenarioGUIController;
@@ -42,9 +43,9 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public EndPointProvider endPointProvider(ApiCollector apiCollector) {
+    public EndPointProvider endPointProvider(RestApiCollector restApiCollector, WebSocketCollector webSocketCollector) {
         // need core method
-        return new EndPointProvider(apiCollector);
+        return new EndPointProvider(restApiCollector, webSocketCollector);
     }
 
     @Bean
@@ -61,8 +62,14 @@ public class ApiGhostWebAutoConfiguration {
     }
 
     @Bean
-    public ApiCollector apiCollector(ApiGhostProperties apiGhostProperties) {
-        return new ApiCollector(apiGhostProperties.getBasePackage(),
+    public RestApiCollector apiCollector(ApiGhostProperties apiGhostProperties) {
+        return new RestApiCollector(apiGhostProperties.getBasePackage(),
+            apiGhostProperties.getBaseUrl());
+    }
+
+    @Bean
+    public WebSocketCollector webSocketCollector(ApiGhostProperties apiGhostProperties) {
+        return new WebSocketCollector(apiGhostProperties.getBasePackage(),
             apiGhostProperties.getBaseUrl());
     }
 

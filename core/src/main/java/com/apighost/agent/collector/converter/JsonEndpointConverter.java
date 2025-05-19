@@ -8,16 +8,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 
-public class EndpointJsonBodyConverter {
+public class JsonEndpointConverter {
 
-    private static final EndpointJsonBodyConverter INSTANCE = new EndpointJsonBodyConverter();
+    private static final JsonEndpointConverter INSTANCE = new JsonEndpointConverter();
     private final ObjectMapper objectMapper;
 
-    private EndpointJsonBodyConverter() {
+    private JsonEndpointConverter() {
         this.objectMapper = new ObjectMapper();
     }
 
-    public static EndpointJsonBodyConverter getInstance() {
+    public static JsonEndpointConverter getInstance() {
         return INSTANCE;
     }
 
