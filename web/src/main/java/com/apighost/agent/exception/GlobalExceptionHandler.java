@@ -1,8 +1,10 @@
 package com.apighost.agent.exception;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.FileNotFoundException;
 import java.nio.file.NoSuchFileException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,7 +37,7 @@ import org.springframework.web.context.request.WebRequest;
  */
 @RestControllerAdvice(basePackages = "com.apighost.agent")
 public class GlobalExceptionHandler {
-
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     /**
      * Resolves the error message by selecting the custom message from the exception if available,
      * or the default message from the specified error code.
@@ -56,13 +58,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 400
      */
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.INVALID_PARAMETER;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -72,13 +77,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 500
      */
     @ExceptionHandler(IOException.class)
-    public ResponseEntity<ErrorResponse> handleIOException(IOException ex) {
+    public ResponseEntity<ErrorResponse> handleIOException(IOException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.IO_ERROR;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -88,13 +96,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 404
      */
     @ExceptionHandler(FileNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleFileNotFoundException(FileNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleFileNotFoundException(FileNotFoundException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.FILE_NOT_FOUND;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -104,13 +115,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 404
      */
     @ExceptionHandler(NoSuchFileException.class)
-    public ResponseEntity<ErrorResponse> handleNoSuchFileException(NoSuchFileException ex) {
+    public ResponseEntity<ErrorResponse> handleNoSuchFileException(NoSuchFileException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.FILE_NOT_FOUND;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -120,13 +134,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 500
      */
     @ExceptionHandler(ClassNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleClassNotFoundException(ClassNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleClassNotFoundException(ClassNotFoundException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.CLASS_NOT_FOUND;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -136,13 +153,16 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 400
      */
     @ExceptionHandler(JsonProcessingException.class)
-    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex) {
+    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex, WebRequest request) {
         ErrorCode errorCode = ErrorCode.INVALID_JSON_FORMAT;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -152,13 +172,26 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 409
      */
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException ex) {
+    public ResponseEntity<?> handleIllegalStateException(IllegalStateException ex, WebRequest request)
+        throws JsonProcessingException {
         ErrorCode errorCode = ErrorCode.ILLEGAL_STATE;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/event-stream")) {
+            String sseError = "event: error\ndata: " + objectMapper.writeValueAsString(errorResponse) + "\n\n";
+            return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .body(sseError);
+        }
+
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -168,13 +201,17 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 400
      */
     @ExceptionHandler(NumberFormatException.class)
-    public ResponseEntity<ErrorResponse> handleNumberFormatException(NumberFormatException ex) {
+    public ResponseEntity<?> handleNumberFormatException(NumberFormatException ex, WebRequest request)
+        throws JsonProcessingException {
         ErrorCode errorCode = ErrorCode.INVALID_PARAMETER;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
     /**
@@ -185,18 +222,26 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity containing the error response with HTTP status 500
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, WebRequest request) {
-        String contentType = request.getHeader("Accept");
-        if (contentType.contains("text/event-stream")) {
-            return null;
-        }
-
+    public ResponseEntity<?> handleGeneralException(Exception ex, WebRequest request)
+        throws JsonProcessingException {
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         ErrorResponse errorResponse = new ErrorResponse.Builder()
             .code(errorCode.getCode())
             .message(resolveErrorMessage(ex, errorCode))
             .build();
-        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/event-stream")) {
+            String sseError = "event: error\ndata: " + objectMapper.writeValueAsString(errorResponse) + "\n\n";
+            return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .body(sseError);
+        }
+        return ResponseEntity
+            .status(errorCode.getHttpStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(errorResponse);
     }
 
 }
