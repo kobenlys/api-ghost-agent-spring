@@ -12,6 +12,7 @@ repositories {
 dependencies {
 
     implementation project(':core')
+    implementation files('../libs/util-1.0-SNAPSHOT.jar')
     implementation files('../libs/core-1.0-SNAPSHOT.jar')
     implementation files('../libs/model-1.0-SNAPSHOT.jar')
     implementation files('../libs/parser-1.0-SNAPSHOT.jar')
