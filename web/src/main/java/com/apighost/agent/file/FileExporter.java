@@ -4,6 +4,7 @@ import com.apighost.agent.model.ScenarioExportResponse;
 import com.apighost.agent.util.ObjectMapperHolder;
 import com.apighost.model.scenario.Scenario;
 import com.apighost.model.scenario.ScenarioResult;
+import com.apighost.util.file.TimeUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -28,7 +29,6 @@ public class FileExporter {
     /**
      * Constructs a {@code FileExporter} with a configured {@link ObjectMapper}. Enables
      * pretty-printing for output files.
-     *
      */
     public FileExporter() {
         this.objectMapper = ObjectMapperHolder.getInstance();
@@ -72,7 +72,13 @@ public class FileExporter {
         } else if (fileObject instanceof ScenarioResult scenarioResult) {
 
             String scenarioName = scenarioResult.getName();
-            exportPath = exportPath + "/" + scenarioName + fileType;
+            String safeTimestamp = TimeUtils.getNow()
+                .replace("-", "")
+                .replace("T", "_")
+                .replace(":", "")
+                .replaceAll("\\.\\d+$", "");
+
+            exportPath = exportPath + "/" + scenarioName + "_" + safeTimestamp + fileType;
 
             if (!exportFileExecutor(scenarioResult, exportPath)) {
                 throw new IllegalArgumentException("Failed ScenarioResult export :" + exportPath);
@@ -97,12 +103,8 @@ public class FileExporter {
      */
     public ScenarioExportResponse safeExportFile(Object fileObject, String fileType,
         String exportPath) {
-        try {
-            exportFile(fileObject, fileType, exportPath);
-            return new ScenarioExportResponse(true);
-        } catch (Exception e) {
-            return new ScenarioExportResponse(false);
-        }
+        exportFile(fileObject, fileType, exportPath);
+        return new ScenarioExportResponse(true);
     }
 
     private boolean isEmptyOrNull(String targetString) {
