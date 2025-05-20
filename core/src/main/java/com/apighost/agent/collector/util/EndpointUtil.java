@@ -1,5 +1,6 @@
 package com.apighost.agent.collector.util;
 
+import com.apighost.agent.collector.RestApiCollector;
 import com.apighost.model.collector.FieldMeta;
 import com.apighost.model.collector.Parameter;
 import io.github.classgraph.AnnotationInfo;
@@ -56,8 +57,16 @@ public class EndpointUtil {
      * @return configured ClassGraph instance
      */
     public static ClassGraph createClassGraph(String basePackage) {
-        ClassGraph classGraph = new ClassGraph().enableAllInfo().enableMethodInfo()
+        ClassGraph classGraph = new ClassGraph()
+            .enableAllInfo()
+            .enableMethodInfo()
             .enableAnnotationInfo();
+
+        boolean isBootJar = EndpointUtil.class.getResource("").getProtocol().equals("jar");
+        if (isBootJar) {
+            classGraph.enableSystemJarsAndModules();
+        }
+
         if (basePackage != null && !basePackage.isEmpty()) {
             classGraph.acceptPackages(basePackage);
         }
