@@ -256,20 +256,22 @@ public class EndpointUtil {
      * Extracts string array values from annotation attributes.
      *
      * @param annotationInfo the annotation metadata
-     * @param key            the attribute name to extract
+     * @param keys           the attribute name to extract
      * @return list of string values or empty list if not found
      */
-    public static List<String> extractStringArray(AnnotationInfo annotationInfo, String key) {
+    public static List<String> extractStringArray(AnnotationInfo annotationInfo, String... keys) {
         if (annotationInfo == null) {
             return Collections.emptyList();
         }
 
-        Object value = annotationInfo.getParameterValues().getValue(key);
-        if (value instanceof String) {
-            return Collections.singletonList((String) value);
-        } else if (value instanceof String[]) {
-            String[] array = (String[]) value;
-            return array.length > 0 ? Arrays.asList(array) : Collections.emptyList();
+        for (String key : keys) {
+            Object value = annotationInfo.getParameterValues().getValue(key);
+            if (value instanceof String) {
+                return Collections.singletonList((String) value);
+            } else if (value instanceof String[]) {
+                String[] array = (String[]) value;
+                return array.length > 0 ? Arrays.asList(array) : Collections.emptyList();
+            }
         }
 
         return Collections.emptyList();

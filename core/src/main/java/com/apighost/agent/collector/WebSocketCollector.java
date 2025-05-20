@@ -133,7 +133,6 @@ public class WebSocketCollector implements Collector {
         AnnotationInfoList methodAnnotations = methodInfo.getAnnotationInfo();
         String methodName = methodInfo.getName();
 
-        // @MessageMapping for SEND
         AnnotationInfo messageMapping = methodAnnotations.get(
             "org.springframework.messaging.handler.annotation.MessageMapping");
         if (messageMapping != null) {
@@ -144,23 +143,37 @@ public class WebSocketCollector implements Collector {
                     HTTPMethod.SEND, methodName);
                 endpoints.add(sendEndpoint);
             }
-        }
+            AnnotationInfo sendTo = methodAnnotations.get(
+                "org.springframework.messaging.handler.annotation.SendTo");
+            if (sendTo != null) {
+                List<String> sendPaths = EndpointUtil.extractStringArray(sendTo, "value",
+                    "destination");
+                for (String sendPath : sendPaths) {
+                    Endpoint subscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
+                        sendPath, HTTPMethod.SUBSCRIBE, methodName);
+                    endpoints.add(subscribeEndpoint);
+                    Endpoint unsubscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
+                        sendPath,
+                        HTTPMethod.UNSUBSCRIBE, methodName);
+                    endpoints.add(unsubscribeEndpoint);
+                }
+            }
 
-        // @SubscribeMapping for SUBSCRIBE and UNSUBSCRIBE
-        AnnotationInfo subscribeMapping = methodAnnotations.get(
-            "org.springframework.messaging.simp.annotation.SubscribeMapping");
-        if (subscribeMapping != null) {
-            String destination = EndpointUtil.extractPath(subscribeMapping, "value", "destination");
-            if (!destination.isEmpty()) {
-                Endpoint subscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
-                    destination,
-                    HTTPMethod.SUBSCRIBE, methodName);
-                endpoints.add(subscribeEndpoint);
-
-                Endpoint unsubscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
-                    destination,
-                    HTTPMethod.UNSUBSCRIBE, methodName + "_unsubscribe");
-                endpoints.add(unsubscribeEndpoint);
+            AnnotationInfo sendToUser = methodAnnotations.get(
+                "org.springframework.messaging.simp.annotation.SendToUser");
+            if (sendToUser != null) {
+                List<String> sendPaths = EndpointUtil.extractStringArray(sendToUser, "value",
+                    "destination");
+                for (String sendPath : sendPaths) {
+                    Endpoint subscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
+                        sendPath,
+                        HTTPMethod.SUBSCRIBE, methodName);
+                    endpoints.add(subscribeEndpoint);
+                    Endpoint unsubscribeEndpoint = buildEndpoint(methodInfo, classDestinationPrefix,
+                        sendPath,
+                        HTTPMethod.UNSUBSCRIBE, methodName);
+                    endpoints.add(unsubscribeEndpoint);
+                }
             }
         }
 
