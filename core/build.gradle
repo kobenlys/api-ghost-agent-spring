@@ -29,7 +29,7 @@ dependencies {
     implementation 'com.github.javaparser:javaparser-core:3.25.7'
 
     // ClassGraph
-    implementation "io.github.classgraph:classgraph:4.8.112"
+    implementation "io.github.classgraph:classgraph:4.8.179"
 
     // Jackson
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0"
