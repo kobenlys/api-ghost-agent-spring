@@ -1,5 +1,6 @@
 package com.apighost.agent.controller;
 
+import com.apighost.agent.file.DirectoryInitializer;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -27,6 +28,7 @@ public class ScenarioGUIController {
      */
     @GetMapping("/apighost-ui/**")
     public String showGUI() {
+        DirectoryInitializer.initializeAllRequiredDirectories();
         return "forward:/apighost-ui.html";
     }
 }
