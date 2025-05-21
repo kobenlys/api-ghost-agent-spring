@@ -53,7 +53,7 @@ public class WebSocketCollector implements Collector {
             this.classLoader = scanResult.getClass().getClassLoader();
 
             WebSocketAnalyzerUtil.WebSocketConfigInfo configInfo =
-                WebSocketAnalyzerUtil.analyze(basePackage);
+                WebSocketAnalyzerUtil.analyze(classGraph);
 
             appDestinationPrefix = configInfo.appPrefix;
             brokerDestinationPrefix = configInfo.brokerPrefix;
